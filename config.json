@@ -23,9 +23,9 @@
     "tts_max_length": 300,
     "tts_webui_url": "http://192.168.1.98:7770",
     "whisper_model": "openai/whisper-small.en",
-    "lm_studio_temperature": 0.8,
+    "lm_studio_temperature": 1.1,
     "max_tokens": 1000,
-    "system_prompt_key": "Stark",
+    "system_prompt_key": "Yoda",
     "character": null,
     "reasoning_enabled": false
 }

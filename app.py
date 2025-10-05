@@ -108,22 +108,42 @@ settings = {
 @cl.on_chat_start
 async def on_chat_start():
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
-    selected_model = available_models[0]
+    
+    # Load initial settings from config.json
+    selected_model = config.get("last_used_model", available_models[0] if available_models else "default_model")
     cl.user_session.set("selected_model", selected_model)
     
-    # Set initial settings in session
-    selected_voice = default_tts_voice
+    selected_voice = config.get("tts_voice", default_tts_voice)
     cl.user_session.set("selected_voice", selected_voice)
-    cl.user_session.set("system_prompt", prompt_catalog["AI"])
-    cl.user_session.set("character", character_options[0])
-    cl.user_session.set("llm_temp", default_llm_temp)
-    cl.user_session.set("max_tokens", default_max_tokens)
-    cl.user_session.set("tts_speed", default_tts_speed)
-    cl.user_session.set("tts_exaggeration", default_tts_exaggeration)
-    cl.user_session.set("reasoning_enabled", False)
     
-    # Send dynamic chat settings form for voice and other options
+    system_prompt_key = config.get("system_prompt_key", "AI") # Default to "AI" if not found
+    cl.user_session.set("system_prompt", prompt_catalog.get(system_prompt_key, prompt_catalog["AI"]))
+    
+    character = config.get("character", character_options[0])
+    cl.user_session.set("character", character)
+    
+    llm_temp = config.get("lm_studio_temperature", default_llm_temp)
+    cl.user_session.set("llm_temp", llm_temp)
+    
+    max_tokens = config.get("max_tokens", default_max_tokens)
+    cl.user_session.set("max_tokens", max_tokens)
+    
+    tts_speed = config.get("tts_speed", default_tts_speed)
+    cl.user_session.set("tts_speed", tts_speed)
+    
+    tts_exaggeration = config.get("tts_exaggeration", default_tts_exaggeration)
+    cl.user_session.set("tts_exaggeration", tts_exaggeration)
+    
+    reasoning_enabled = config.get("reasoning_enabled", False)
+    cl.user_session.set("reasoning_enabled", reasoning_enabled)
+
+    # Find initial index for voice and model
     voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
+    model_index = available_models.index(selected_model) if selected_model in available_models else 0
+    system_prompt_index = list(prompt_catalog.keys()).index(system_prompt_key) if system_prompt_key in prompt_catalog else 0
+    character_index = character_options.index(character) if character in character_options else 0
+
+    # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
         [
             Select(
@@ -136,7 +156,7 @@ async def on_chat_start():
                 id="model",
                 label="LLM Model",
                 values=available_models,
-                initial_index=0
+                initial_index=model_index
             ),
             Select(
                 id="model_refresh",
@@ -148,18 +168,18 @@ async def on_chat_start():
                 id="system_prompt",
                 label="System Prompt",
                 values=list(prompt_catalog.keys()),
-                initial_index=0
+                initial_index=system_prompt_index
             ),
             Select(
                 id="character",
                 label="Character",
                 values=character_options,
-                initial_index=0
+                initial_index=character_index
             ),
             Slider(
                 id="llm_temp",
                 label="LLM Temperature",
-                initial=default_llm_temp,
+                initial=llm_temp,
                 min=0.0,
                 max=2.0,
                 step=0.1
@@ -167,7 +187,7 @@ async def on_chat_start():
             Slider(
                 id="max_tokens",
                 label="Max Tokens",
-                initial=default_max_tokens,
+                initial=max_tokens,
                 min=100,
                 max=2000,
                 step=50
@@ -175,7 +195,7 @@ async def on_chat_start():
             Slider(
                 id="tts_speed",
                 label="TTS Speed",
-                initial=default_tts_speed,
+                initial=tts_speed,
                 min=0.25,
                 max=4.0,
                 step=0.05
@@ -183,15 +203,23 @@ async def on_chat_start():
             Slider(
                 id="tts_exaggeration",
                 label="TTS Exaggeration",
-                initial=default_tts_exaggeration,
+                initial=tts_exaggeration,
                 min=0.0,
                 max=1.0,
+                step=0.1
+            ),
+            Slider(
+                id="tts_temperature",
+                label="TTS Temperature",
+                initial=config.get("tts_temperature", 1.4), # Use value from config.json, default to 1.4
+                min=0.0,
+                max=2.0,
                 step=0.1
             ),
             Switch(
                 id="reasoning_enabled",
                 label="Enable Reasoning",
-                initial=False
+                initial=reasoning_enabled
             )
         ]
     ).send()
@@ -222,20 +250,27 @@ async def on_settings_update(settings):
         if "voice" in settings:
             current_config["tts_voice"] = settings["voice"]
         if "model" in settings:
-            # LLM model selection is handled by cl.user_session.set("selected_model", settings["model"])
-            # and is not directly persisted to config.json in this manner.
-            pass # No direct persistence to config.json for LLM model ID
-        if "voice" in settings:
-            # Persist the selected TTS voice
-            current_config["tts_voice"] = settings["voice"]
+            # Persist the selected LLM model to last_used_model
+            current_config["last_used_model"] = settings["model"]
+        if "system_prompt" in settings:
+            # Persist system prompt (note: prompt_catalog is defined in app.py, not config.json)
+            # We'll store the key here, and the full prompt will be resolved on load.
+            current_config["system_prompt_key"] = settings["system_prompt"]
+        if "character" in settings:
+            # Persist character
+            current_config["character"] = settings["character"]
         if "llm_temp" in settings:
-            current_config["lm_studio_temperature"] = settings["llm_temp"] # Assuming this key exists or should be added
+            current_config["lm_studio_temperature"] = settings["llm_temp"]
         if "max_tokens" in settings:
             current_config["max_tokens"] = settings["max_tokens"]
         if "tts_speed" in settings:
             current_config["tts_speed"] = settings["tts_speed"]
         if "tts_exaggeration" in settings:
             current_config["tts_exaggeration"] = settings["tts_exaggeration"]
+        if "tts_temperature" in settings: # Persist TTS Temperature
+            current_config["tts_temperature"] = settings["tts_temperature"]
+        if "reasoning_enabled" in settings: # Persist Reasoning Enabled
+            current_config["reasoning_enabled"] = settings["reasoning_enabled"]
         
         # Write the updated config back to the file
         with open(config_path, 'w') as f:

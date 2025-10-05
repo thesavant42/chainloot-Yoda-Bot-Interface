@@ -1,14 +1,9 @@
-# TTS (Text-to-Speech) related functions
-
 import requests
 import json
 from openai import AsyncOpenAI
-import cl
+import chainlit as cl
 from chainlit.logger import logger
 from io import BytesIO
-
-# Placeholder for configuration loading - this will be handled by app.py or a shared config module
-# For now, we'll assume these are passed in or globally available.
 
 # --- TTS Core Functionality ---
 

@@ -10,23 +10,13 @@ from io import BytesIO
 from chainlit.input_widget import Select, Slider, Switch
 import sys
 import wave
-
-# Import the new message processing function
 from lib.message_processor import process_message_for_tts
-
-def raw_pcm_to_wav(pcm_bytes, sample_rate=16000, channels=1, sample_width=2):
-    """Convert raw PCM bytes to WAV bytes."""
-    wav_buffer = BytesIO()
-    with wave.open(wav_buffer, 'wb') as wav_file:
-        wav_file.setnchannels(channels)
-        wav_file.setsampwidth(sample_width)  # 2 bytes for 16-bit
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(pcm_bytes)
-    return wav_buffer.getvalue()
+from lib.stt import raw_pcm_to_wav, transcribe_audio, handle_audio_chunk, handle_audio_end
+from lib.tts import fetch_available_voices, generate_speech
+import time
 
 load_dotenv()
 
-# Load config.json
 config_path = 'config.json'
 
 try:
@@ -42,13 +32,12 @@ TTS_WEBUI_URL = config["tts_webui_url"]
 
 # Fetch available voices for Chatterbox dynamically from API
 try:
-    voices_response = requests.get(f"{CHATTERBOX_URL}/v1/audio/voices/chatterbox")
-    voices_response.raise_for_status()
-    voices_data = voices_response.json()
-    available_voices = [v["value"] for v in voices_data["voices"]]
+    # Use the imported fetch_available_voices function
+    voices_data = fetch_available_voices(CHATTERBOX_URL)
+    available_voices = [v["value"] for v in voices_data]
     if config["tts_voice"] not in available_voices:
         print(f"Warning: Config voice {config['tts_voice']} not in available voices. Using first available.")
-        config["tts_voice"] = available_voices[0] if available_voices else config["tts_voice"]
+        config["tts_voice"] = available_voices if available_voices else config["tts_voice"]
 except Exception as e:
     voices_data = [{"value": config["tts_voice"], "label": config["tts_voice"]}]
     available_voices = [config["tts_voice"]]
@@ -76,8 +65,7 @@ client = AsyncOpenAI(base_url=f"{LM_STUDIO_URL}/v1", api_key=api_key)
 tts_client = AsyncOpenAI(base_url=f"{CHATTERBOX_URL}/v1", api_key=api_key)
 
 # Sync client for STT transcription
-stt_client = OpenAI(base_url=f"{CHATTERBOX_URL}/v1", api_key=api_key)
-# Instrument the OpenAI client
+stt_client = AsyncOpenAI(base_url=f"{CHATTERBOX_URL}/v1", api_key=api_key)
 cl.instrument_openai()
 
 # Defaults from config
@@ -90,14 +78,13 @@ default_tts_model = config["tts_model_name"]
 default_tts_response_format = config["tts_response_format"]
 default_tts_stream = config["tts_stream"]
 
-# Prompt catalog
+# Character System Prompt catalog
 prompt_catalog = {
     "AI": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
     "Yoda": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
     "Stark": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message."
 }
 
-# Character profiles for chat participants
 character_options = list(prompt_catalog.keys())
 
 settings = {
@@ -105,35 +92,121 @@ settings = {
     "max_tokens": default_max_tokens,
 }
 
+async def process_user_input_and_respond(user_text: str):
+    """
+    Handles the core logic: gets LLM response, sends text, and generates TTS audio.
+    """
+    # 1. Get settings from the user session
+    selected_model = cl.user_session.get("selected_model")
+    system_prompt = cl.user_session.get("system_prompt")
+    llm_temp = cl.user_session.get("llm_temp")
+    max_tokens = cl.user_session.get("max_tokens")
+    reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
+    if reasoning_enabled:
+        system_prompt += " Think step by step before responding."
+
+    # 2. Get LLM response
+    llm_start_time = time.time()
+    response = await client.chat.completions.create(
+        model=selected_model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_text}
+        ],
+        temperature=llm_temp,
+        max_tokens=max_tokens,
+    )
+    llm_end_time = time.time()
+    logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
+    full_response = response.choices[0].message.content.strip()
+    logger.info(f"LLM Response: {full_response}")
+
+    # 3. Send text response to the UI
+    character = cl.user_session.get("character")
+    text_msg = await cl.Message(
+        content=full_response,
+        author=character
+    )   .send()
+       
+    # 4. Generate and send audio response
+    selected_voice = cl.user_session.get("selected_voice")
+    tts_speed = cl.user_session.get("tts_speed")
+    tts_exaggeration = cl.user_session.get("tts_exaggeration")
+    
+    # --- THIS IS THE CORRECTED, FULL DICTIONARY ---
+    tts_config_params = {
+        "cfg_weight": config.get("tts_cfg_weight", 5.0),
+        "temperature": config.get("tts_temperature", 1.4),
+        "device": config.get("tts_device", "cpu"),
+        "dtype": config.get("tts_dtype", "float32"),
+        "seed": config.get("tts_seed", -1),
+        "chunked": config.get("tts_chunked", False),
+        "use_compilation": config.get("tts_use_compilation", False),
+        "max_new_tokens": config.get("tts_max_new_tokens", 512),
+        "max_cache_len": config.get("tts_max_cache_len", 0),
+        "desired_length": config.get("tts_desired_length", None),
+        "max_length": config.get("tts_max_length", None),
+        "halve_first_chunk": config.get("tts_halve_first_chunk", True),
+        "cpu_offload": config.get("tts_cpu_offload", False),
+        "cache_voice": config.get("tts_cache_voice", False),
+        "tokens_per_slice": config.get("tts_tokens_per_slice", None),
+        "remove_milliseconds": config.get("tts_remove_milliseconds", None),
+        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start", None),
+        "chunk_overlap_method": config.get("tts_chunk_overlap_method", "undefined")
+    }
+
+    tts_start_time = time.time()
+    audio_buffer = await generate_speech(
+        tts_client=tts_client,
+        text=full_response,
+        voice=selected_voice,
+        tts_model=default_tts_model,
+        response_format=default_tts_response_format,
+        speed=tts_speed,
+        exaggeration=tts_exaggeration,
+        tts_config=tts_config_params
+    )
+    tts_end_time = time.time()
+    logger.info(f"PERF: TTS call took {tts_end_time - tts_start_time:.2f} seconds.")
+
+    await cl.Audio(
+        name="response_audio.wav",
+        content=audio_buffer,
+        mime="audio/wav",
+        auto_play=True
+    ).send(for_id=text_msg.id)
+
+### Main Chat Logic Here ###
 @cl.on_chat_start
 async def on_chat_start():
+    for character_name in prompt_catalog.keys():
+        await cl.Avatar(name=character_name).send()
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
-    
+
     # Load initial settings from config.json
-    selected_model = config.get("last_used_model", available_models[0] if available_models else "default_model")
+    selected_model = config.get("last_used_model", available_models if available_models else "default_model")
     cl.user_session.set("selected_model", selected_model)
-    
+
     selected_voice = config.get("tts_voice", default_tts_voice)
     cl.user_session.set("selected_voice", selected_voice)
-    
+
     system_prompt_key = config.get("system_prompt_key", "AI") # Default to "AI" if not found
     cl.user_session.set("system_prompt", prompt_catalog.get(system_prompt_key, prompt_catalog["AI"]))
-    
-    character = config.get("character", list(prompt_catalog.keys())[0])
-    cl.user_session.set("character", character)
-    
+
+    cl.user_session.set("character", system_prompt_key)
+
     llm_temp = config.get("lm_studio_temperature", default_llm_temp)
     cl.user_session.set("llm_temp", llm_temp)
-    
+
     max_tokens = config.get("max_tokens", default_max_tokens)
     cl.user_session.set("max_tokens", max_tokens)
-    
+
     tts_speed = config.get("tts_speed", default_tts_speed)
     cl.user_session.set("tts_speed", tts_speed)
-    
+
     tts_exaggeration = config.get("tts_exaggeration", default_tts_exaggeration)
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
-    
+
     reasoning_enabled = config.get("reasoning_enabled", False)
     cl.user_session.set("reasoning_enabled", reasoning_enabled)
 
@@ -266,11 +339,11 @@ async def on_settings_update(settings):
             current_config["tts_temperature"] = settings["tts_temperature"]
         if "reasoning_enabled" in settings: # Persist Reasoning Enabled
             current_config["reasoning_enabled"] = settings["reasoning_enabled"]
-        
+
         # Write the updated config back to the file
         with open(config_path, 'w') as f:
             json.dump(current_config, f, indent=4)
-            
+
     except Exception as e:
         logger.error(f"Failed to persist settings to {config_path}: {e}")
 
@@ -280,19 +353,19 @@ async def on_settings_update(settings):
             old_models = cl.user_session.get("available_models", available_models)
             new_models = [m for m in updated_models if m not in old_models]
             cl.user_session.set("available_models", updated_models)
-            
+
             if new_models:
                 notification = f"Models refreshed! New models added: {', '.join(new_models)}"
             else:
                 notification = "Models refreshed. No new models detected."
-            
+
             # Update selected_model if it was removed
             selected_model = cl.user_session.get("selected_model")
             if selected_model not in updated_models:
-                new_selected = updated_models[0] if updated_models else available_models[0]
+                new_selected = updated_models if updated_models else available_models
                 cl.user_session.set("selected_model", new_selected)
                 notification += f" Switched to {new_selected}."
-            
+
             await cl.Message(content=notification).send()
         except Exception as e:
             await cl.Message(content=f"Failed to refresh models: {str(e)}").send()
@@ -300,273 +373,17 @@ async def on_settings_update(settings):
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    logger.info(f"AUDIO DIAG: on_message triggered - Session ID: {cl.context.session.id}, Elements count: {len(message.elements) if message.elements else 0}, Content: '{message.content[:50]}...'")
-    logger.info(f"AUDIO DIAG: Message type: {type(message)}, Elements types: {[type(e).__name__ for e in (message.elements or [])]}")
-    # Handle audio elements from mic or file uploads for STT
-    if message.elements:
-        logger.info(f"AUDIO DIAG: Processing {len(message.elements)} elements")
-        for i, element in enumerate(message.elements):
-            logger.info(f"AUDIO DIAG: Element {i}: type={type(element).__name__}, name={getattr(element, 'name', 'N/A')}")
-            logger.info(f"AUDIO DIAG: Element attributes: {dir(element)}")
-            logger.info(f"AUDIO DIAG: Element dict: {element.__dict__ if hasattr(element, '__dict__') else 'No __dict__'}")
-            audio_bytes = None
-            if isinstance(element, cl.Audio):
-                # Handle direct audio from microphone widget or uploaded audio
-                if element.content is not None:
-                    audio_bytes = element.content
-                    logger.info(f"AUDIO DIAG: Audio element content direct - Name: {element.name}, Mime: {element.mime}, Length: {len(audio_bytes)} bytes")
-                else:
-                    logger.warning(f"AUDIO DIAG: Audio element content is None for {element.name}")
-                    # Try path if available
-                    if hasattr(element, 'path') and element.path:
-                        try:
-                            with open(element.path, 'rb') as f:
-                                audio_bytes = f.read()
-                            logger.info(f"AUDIO DIAG: Audio element from path - Name: {element.name}, Path: {element.path}, Length: {len(audio_bytes)} bytes")
-                        except Exception as path_err:
-                            logger.error(f"AUDIO DIAG: Failed to read from path: {path_err}")
-                    else:
-                        logger.warning(f"AUDIO DIAG: No path available for Audio element {element.name}")
-            elif isinstance(element, cl.File) and element.type.startswith("audio/"):
-                # Fallback for manual file upload
-                audio_bytes = await element.read()
-                logger.info(f"AUDIO DIAG: Audio file uploaded - Name: {element.name}, Type: {element.type}, Length: {len(audio_bytes)} bytes")
-            
-            if audio_bytes is None:
-                logger.warning(f"AUDIO DIAG: No audio bytes found for element {i}")
-                continue
-            logger.info(f"AUDIO DIAG: Found audio bytes, length: {len(audio_bytes)}")
-            try:
-                # 1. Speech-to-Text
-                logger.info(f"AUDIO DIAG: Calling STT API - Model: {config.get('whisper_model', 'openai/whisper-tiny.en')}, URL: {stt_client.base_url}, Bytes: {len(audio_bytes)}")
-                
-                # For uploaded files, assume WAV; for raw (e.g., potential mic elements), convert
-                # Check if it's raw PCM (no path indicates possible raw from widget)
-                is_raw_pcm = not hasattr(element, 'path') or not element.path
-                if is_raw_pcm:
-                    wav_bytes = raw_pcm_to_wav(audio_bytes, sample_rate=16000)
-                    logger.info(f"AUDIO DIAG: Converted {len(audio_bytes)} PCM bytes to {len(wav_bytes)} WAV bytes")
-                    audio_for_stt = wav_bytes
-                else:
-                    audio_for_stt = audio_bytes
-                
-                transcription = stt_client.audio.transcriptions.create(
-                    model=config.get("whisper_model", "openai/whisper-small.en"),
-                    file=("recorded_audio.wav", BytesIO(audio_for_stt)),
-                )
-                user_text = transcription.text.strip()
-                logger.info(f"AUDIO DIAG: STT response - Text length: {len(user_text)}, Text: '{user_text[:50]}...'")
-                
-                if not user_text:
-                    await cl.Message(content="No speech detected in audio.").send()
-                    return
+    """Handles text messages by calling the core logic function."""
+    if message.content:
+        await process_user_input_and_respond(message.content)
 
-                # Display transcribed text as user message
-                user_msg = await cl.Message(content=user_text).send()
-
-                # Reuse logic for LLM and TTS
-                session_models = cl.user_session.get("available_models")
-                current_models = session_models if session_models else available_models
-                selected_model = cl.user_session.get("selected_model") or current_models[0]
-                system_prompt = cl.user_session.get("system_prompt", prompt_catalog["AI"])
-                reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
-                if reasoning_enabled:
-                    system_prompt += " Think step by step before responding."
-                llm_temp = cl.user_session.get("llm_temp", default_llm_temp)
-                max_tokens = cl.user_session.get("max_tokens", default_max_tokens)
-
-                # 2. LLM Inference
-                response = await client.chat.completions.create(
-                    model=selected_model,
-                    messages=[
-                        {"content": system_prompt, "role": "system"},
-                        {"content": user_text, "role": "user"}
-                    ],
-                    temperature=llm_temp,
-                    max_tokens=max_tokens,
-                )
-                full_response = response.choices[0].message.content
-
-                # --- Sentiment Analysis Integration ---
-                # Process the full response for sentiment analysis and debugging.
-                # The process_message_for_tts function will handle chunking, scrubbing,
-                # sentiment classification, and printing debug statements.
-                # For now, we are not directly using the sentiment to influence TTS,
-                # but the debug statements will be printed.
-                # Future work could involve using processed_message_data to influence TTS.
-                processed_message_data = process_message_for_tts(full_response)
-                # --- End Sentiment Analysis Integration ---
-            
-                character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
-                text_msg = await cl.Message(content=f"[{character}]: {full_response}").send()
-            
-                # --- Sentiment Analysis Integration ---
-                # Process the full response for sentiment analysis and debugging.
-                # The process_message_for_tts function will handle chunking, scrubbing,
-                # sentiment classification, and printing debug statements.
-                # For now, we are not directly using the sentiment to influence TTS,
-                # but the debug statements will be printed.
-                # Future work could involve using processed_message_data to influence TTS.
-                processed_message_data = process_message_for_tts(full_response)
-                # --- End Sentiment Analysis Integration ---
-            
-                # 3. Text-to-Speech
-                selected_voice = cl.user_session.get("selected_voice", default_tts_voice)
-                tts_speed = cl.user_session.get("tts_speed", default_tts_speed)
-                tts_exaggeration = cl.user_session.get("tts_exaggeration", default_tts_exaggeration)
-            
-                params_dict = {
-                    "exaggeration": tts_exaggeration,
-                    "cfg_weight": config["tts_cfg_weight"],
-                    "temperature": config["tts_temperature"],
-                    "device": config["tts_device"],
-                    "dtype": config["tts_dtype"],
-                    "seed": config["tts_seed"],
-                    "chunked": config["tts_chunked"],
-                    "use_compilation": config["tts_use_compilation"],
-                    "max_new_tokens": config["tts_max_new_tokens"],
-                    "max_cache_len": config["tts_max_cache_len"],
-                    "desired_length": config["tts_desired_length"],
-                    "max_length": config["tts_max_length"],
-                    "halve_first_chunk": True,
-                    "cpu_offload": False,
-                    "cache_voice": False,
-                    "tokens_per_slice": None,
-                    "remove_milliseconds": None,
-                    "remove_milliseconds_start": None,
-                    "chunk_overlap_method": "undefined"
-                }
-            
-                buffer = b""
-                async with tts_client.audio.speech.with_streaming_response.create(
-                    model=default_tts_model,
-                    input=full_response, # Keep original full_response for TTS input for now
-                    voice=selected_voice,
-                    response_format=default_tts_response_format,
-                    speed=tts_speed,
-                    extra_body={"params": params_dict}
-                ) as response:
-                    async for chunk in response.iter_bytes():
-                        buffer += chunk
-
-                tts_audio = cl.Audio(
-                    name="response_audio.wav",
-                    content=buffer,
-                    mime="audio/wav",
-                    auto_play=True
-                )
-                await tts_audio.send(for_id=text_msg.id)
-
-            except Exception as e:
-                logger.error(f"AUDIO DIAG: STT or processing error: {str(e)}")
-                await cl.Message(content=f"Error processing audio: {str(e)}").send()
-            return
-
-    # Handle text messages
-    if not message.content:
-        logger.info("AUDIO DIAG: Empty content and no elements, skipping")
-        return
-
-    logger.info(f"Processing text message: {message.content[:100]}...")
-    
-    # Use latest models from session if available, else global
-    session_models = cl.user_session.get("available_models")
-    current_models = session_models if session_models else available_models
-    selected_model = cl.user_session.get("selected_model")
-    if not selected_model:
-        selected_model = current_models[0]
-    
-    system_prompt = cl.user_session.get("system_prompt", prompt_catalog["AI"])
-    reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
-    if reasoning_enabled:
-        system_prompt += " Think step by step before responding."
-    
-    llm_temp = cl.user_session.get("llm_temp", default_llm_temp)
-    max_tokens = cl.user_session.get("max_tokens", default_max_tokens)
-    
-    response = await client.chat.completions.create(
-        model=selected_model,
-        messages=[
-            {
-                "content": system_prompt,
-                "role": "system"
-            },
-            {
-                "content": message.content,
-                "role": "user"
-            }
-        ],
-        temperature=llm_temp,
-        max_tokens=max_tokens,
-    )
-    text_content = response.choices[0].message.content
-    
-    character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
-    # Send text response with character context if needed
-    text_msg = await cl.Message(content=f"[{character}]: {text_content}").send()
-    
-    # Generate TTS audio streaming
-    selected_voice = cl.user_session.get("selected_voice", default_tts_voice)
-    tts_speed = cl.user_session.get("tts_speed", default_tts_speed)
-    tts_exaggeration = cl.user_session.get("tts_exaggeration", default_tts_exaggeration)
-
-    params_dict = {
-        "exaggeration": tts_exaggeration,
-        "cfg_weight": config["tts_cfg_weight"],
-        "temperature": config["tts_temperature"],
-        "device": config["tts_device"],
-        "dtype": config["tts_dtype"],
-        "seed": config["tts_seed"],
-        "chunked": config["tts_chunked"],
-        "use_compilation": config["tts_use_compilation"],
-        "max_new_tokens": config["tts_max_new_tokens"],
-        "max_cache_len": config["tts_max_cache_len"],
-        "desired_length": config["tts_desired_length"],
-        "max_length": config["tts_max_length"],
-        "halve_first_chunk": True,
-        "cpu_offload": False,
-        "cache_voice": False,
-        "tokens_per_slice": None,
-        "remove_milliseconds": None,
-        "remove_milliseconds_start": None,
-        "chunk_overlap_method": "undefined"
-    }
-
-    buffer = b""
-    async with tts_client.audio.speech.with_streaming_response.create(
-        model=default_tts_model,
-        input=text_content,
-        voice=selected_voice,
-        response_format=default_tts_response_format,
-        speed=tts_speed,
-        extra_body={"params": params_dict}
-    ) as response:
-        async for chunk in response.iter_bytes():
-            buffer += chunk
-
-    audio = cl.Audio(
-        name="response_audio.wav",
-        content=buffer,
-        mime="audio/wav",
-        auto_play=True
-    )
-    await audio.send(for_id=text_msg.id)
 
 @cl.on_audio_chunk
 async def on_audio_chunk(chunk):
     """Handle audio chunks from microphone recording."""
-    if chunk.isStart:
-        # Initialize audio buffer for new recording
-        buffer = []
-        cl.user_session.set("audio_buffer", buffer)
-        logger.info(f"AUDIO DIAG: on_audio_chunk START - Session ID: {cl.context.session.id}")
-        return
-    
-    # Append audio chunk to buffer
-    audio_buffer = cl.user_session.get("audio_buffer")
-    if audio_buffer is not None:
-        audio_buffer.append(chunk.data)
-        cl.user_session.set("audio_buffer", audio_buffer)
+    # Use the imported handle_audio_chunk function from lib.stt
+    updated_buffer = await handle_audio_chunk(chunk, cl.user_session.get("audio_buffer"))
+    cl.user_session.set("audio_buffer", updated_buffer)
 
 @cl.on_audio_start
 async def on_audio_start():
@@ -575,125 +392,25 @@ async def on_audio_start():
 
 @cl.on_audio_end
 async def on_audio_end():
-    logger.info(f"AUDIO DIAG: on_audio_end triggered - Session ID: {cl.context.session.id}")
+    """Transcribes audio, then calls the core logic function."""
     audio_buffer = cl.user_session.get("audio_buffer")
-    if not audio_buffer:
-        logger.warning(f"AUDIO DIAG: Empty audio buffer at end of recording")
-        return
-    
-    # Combine all chunks into single audio bytes
-    audio_bytes = b"".join(audio_buffer)
-    logger.info(f"AUDIO DIAG: Combined audio chunks - Total bytes: {len(audio_bytes)}")
-    
-    # Clear buffer
-    cl.user_session.set("audio_buffer", None)
-    
     try:
-        # 1. Speech-to-Text
-        logger.info(f"AUDIO DIAG: Calling STT API - Model: {config.get('whisper_model', 'openai/whisper-tiny.en')}, URL: {stt_client.base_url}, Bytes: {len(audio_bytes)}")
-        
-        # Convert raw PCM to WAV for STT
-        wav_bytes = raw_pcm_to_wav(audio_bytes, sample_rate=24000)
-        logger.info(f"AUDIO DIAG: Converted {len(audio_bytes)} PCM bytes to {len(wav_bytes)} WAV bytes")
-        
-        transcription = stt_client.audio.transcriptions.create(
-            model=config.get("whisper_model", "openai/whisper-small.en"),
-            file=("recorded_audio.wav", BytesIO(wav_bytes)),
+        # Perform STT
+        user_text = await handle_audio_end(
+            stt_client=stt_client, 
+            audio_buffer=audio_buffer, 
+            stt_model=config.get("whisper_model")
         )
-        user_text = transcription.text.strip()
-        logger.info(f"AUDIO DIAG: STT response - Text length: {len(user_text)}, Text: '{user_text[:50]}...'")
-        
+
         if not user_text:
             await cl.Message(content="No speech detected in audio.").send()
             return
 
-        # Display transcribed text as user message
         await cl.Message(content=user_text, author="You").send()
 
-        # Reuse logic for LLM and TTS
-        session_models = cl.user_session.get("available_models")
-        current_models = session_models if session_models else available_models
-        selected_model = cl.user_session.get("selected_model") or current_models[0]
-        system_prompt = cl.user_session.get("system_prompt", prompt_catalog["AI"])
-        reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
-        if reasoning_enabled:
-            system_prompt += " Think step by step before responding."
-        llm_temp = cl.user_session.get("llm_temp", default_llm_temp)
-        max_tokens = cl.user_session.get("max_tokens", default_max_tokens)
-
-        # 2. LLM Inference
-        response = await client.chat.completions.create(
-            model=selected_model,
-            messages=[
-                {"content": system_prompt, "role": "system"},
-                {"content": user_text, "role": "user"}
-            ],
-            temperature=llm_temp,
-            max_tokens=max_tokens,
-        )
-        full_response = response.choices[0].message.content
-
-        # --- Sentiment Analysis Integration ---
-        # Process the full response for sentiment analysis and debugging.
-        # The process_message_for_tts function will handle chunking, scrubbing,
-        # sentiment classification, and printing debug statements.
-        # For now, we are not directly using the sentiment to influence TTS,
-        # but the debug statements will be printed.
-        # Future work could involve using processed_message_data to influence TTS.
-        processed_message_data = process_message_for_tts(full_response)
-        # --- End Sentiment Analysis Integration ---
-
-        character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
-        text_msg = await cl.Message(content=f"[{character}]: {full_response}").send()
-
-        # 3. Text-to-Speech
-        selected_voice = cl.user_session.get("selected_voice", default_tts_voice)
-        tts_speed = cl.user_session.get("tts_speed", default_tts_speed)
-        tts_exaggeration = cl.user_session.get("tts_exaggeration", default_tts_exaggeration)
-
-        params_dict = {
-            "exaggeration": tts_exaggeration,
-            "cfg_weight": config["tts_cfg_weight"],
-            "temperature": config["tts_temperature"],
-            "device": config["tts_device"],
-            "dtype": config["tts_dtype"],
-            "seed": config["tts_seed"],
-            "chunked": config["tts_chunked"],
-            "use_compilation": config["tts_use_compilation"],
-            "max_new_tokens": config["tts_max_new_tokens"],
-            "max_cache_len": config["tts_max_cache_len"],
-            "desired_length": config["tts_desired_length"],
-            "max_length": config["tts_max_length"],
-            "halve_first_chunk": True,
-            "cpu_offload": False,
-            "cache_voice": False,
-            "tokens_per_slice": None,
-            "remove_milliseconds": None,
-            "remove_milliseconds_start": None,
-            "chunk_overlap_method": "undefined"
-        }
-
-        buffer = b""
-        async with tts_client.audio.speech.with_streaming_response.create(
-            model=default_tts_model,
-            input=full_response,
-            voice=selected_voice,
-            response_format=default_tts_response_format,
-            speed=tts_speed,
-            extra_body={"params": params_dict}
-        ) as response:
-            async for chunk in response.iter_bytes():
-                buffer += chunk
-
-        tts_audio = cl.Audio(
-            name="response_audio.wav",
-            content=buffer,
-            mime="audio/wav",
-            auto_play=True
-        )
-        await tts_audio.send(for_id=text_msg.id)
+        # SLIMMED DOWN: Just one call here!
+        await process_user_input_and_respond(user_text)
 
     except Exception as e:
-        logger.error(f"AUDIO DIAG: STT or processing error: {str(e)}")
+        logger.error(f"AUDIO DIAG: Error in on_audio_end: {str(e)}")
         await cl.Message(content=f"Error processing audio: {str(e)}").send()
-    return True

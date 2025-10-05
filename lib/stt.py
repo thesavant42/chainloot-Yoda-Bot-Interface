@@ -2,7 +2,7 @@
 
 from io import BytesIO
 from openai import OpenAI
-import cl
+import chainlit as cl
 from chainlit.logger import logger
 import wave
 import sys
@@ -72,7 +72,7 @@ def transcribe_audio(stt_client: OpenAI, audio_bytes: bytes, model: str = "opena
 
 # --- Event Handlers (to be called from app.py) ---
 
-async def handle_audio_chunk(chunk: cl.AudioChunk, audio_buffer: list[bytes] | None) -> list[bytes]:
+async def handle_audio_chunk(chunk, audio_buffer: list[bytes] | None) -> list[bytes]:
     """
     Appends audio chunk data to the provided buffer.
 

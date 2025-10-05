@@ -5,7 +5,7 @@
     "logging_enabled": false,
     "tts_base_url": "http://192.168.1.98:7778",
     "tts_model_name": "chatterbox",
-    "tts_voice": "voices/chatterbox/nevertnismind.wav",
+    "tts_voice": "voices/chatterbox/rdjpersist.wav",
     "tts_exaggeration": 0.5,
     "tts_cfg_weight": 0.5,
     "tts_temperature": 1.4,
@@ -25,7 +25,7 @@
     "whisper_model": "openai/whisper-small.en",
     "lm_studio_temperature": 1.1,
     "max_tokens": 1000,
-    "system_prompt_key": "Yoda",
+    "system_prompt_key": "Stark",
     "character": null,
     "reasoning_enabled": false
 }

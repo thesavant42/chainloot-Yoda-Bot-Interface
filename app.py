@@ -98,7 +98,7 @@ prompt_catalog = {
 }
 
 # Character profiles for chat participants
-character_options = ["AI", "Yoda", "Stark"]
+character_options = list(prompt_catalog.keys())
 
 settings = {
     "temperature": default_llm_temp,
@@ -119,7 +119,7 @@ async def on_chat_start():
     system_prompt_key = config.get("system_prompt_key", "AI") # Default to "AI" if not found
     cl.user_session.set("system_prompt", prompt_catalog.get(system_prompt_key, prompt_catalog["AI"]))
     
-    character = config.get("character", character_options[0])
+    character = config.get("character", list(prompt_catalog.keys())[0])
     cl.user_session.set("character", character)
     
     llm_temp = config.get("lm_studio_temperature", default_llm_temp)
@@ -141,7 +141,7 @@ async def on_chat_start():
     voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
     model_index = available_models.index(selected_model) if selected_model in available_models else 0
     system_prompt_index = list(prompt_catalog.keys()).index(system_prompt_key) if system_prompt_key in prompt_catalog else 0
-    character_index = character_options.index(character) if character in character_options else 0
+    # character_index = character_options.index(character) if character in character_options else 0
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
@@ -169,12 +169,6 @@ async def on_chat_start():
                 label="System Prompt",
                 values=list(prompt_catalog.keys()),
                 initial_index=system_prompt_index
-            ),
-            Select(
-                id="character",
-                label="Character",
-                values=character_options,
-                initial_index=character_index
             ),
             Slider(
                 id="llm_temp",
@@ -234,7 +228,8 @@ async def on_settings_update(settings):
     cl.user_session.set("selected_model", settings["model"])
     cl.user_session.set("selected_voice", settings["voice"])
     cl.user_session.set("system_prompt", prompt_catalog[settings["system_prompt"]])
-    cl.user_session.set("character", settings["character"])
+    # Set character to the same value as the system prompt key
+    cl.user_session.set("character", settings["system_prompt"])
     cl.user_session.set("llm_temp", settings["llm_temp"])
     cl.user_session.set("max_tokens", int(settings["max_tokens"]))
     cl.user_session.set("tts_speed", settings["tts_speed"])
@@ -402,7 +397,7 @@ async def on_message(message: cl.Message):
                 processed_message_data = process_message_for_tts(full_response)
                 # --- End Sentiment Analysis Integration ---
             
-                character = cl.user_session.get("character", character_options[0])
+                character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
                 text_msg = await cl.Message(content=f"[{character}]: {full_response}").send()
             
                 # --- Sentiment Analysis Integration ---
@@ -506,7 +501,7 @@ async def on_message(message: cl.Message):
     )
     text_content = response.choices[0].message.content
     
-    character = cl.user_session.get("character", character_options[0])
+    character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
     # Send text response with character context if needed
     text_msg = await cl.Message(content=f"[{character}]: {text_content}").send()
     
@@ -648,7 +643,7 @@ async def on_audio_end():
         processed_message_data = process_message_for_tts(full_response)
         # --- End Sentiment Analysis Integration ---
 
-        character = cl.user_session.get("character", character_options[0])
+        character = cl.user_session.get("character", list(prompt_catalog.keys())[0])
         text_msg = await cl.Message(content=f"[{character}]: {full_response}").send()
 
         # 3. Text-to-Speech

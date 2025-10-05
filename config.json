@@ -25,7 +25,7 @@
     "whisper_model": "openai/whisper-small.en",
     "lm_studio_temperature": 0.8,
     "max_tokens": 1000,
-    "system_prompt_key": "Yoda",
-    "character": "Yoda",
+    "system_prompt_key": "Stark",
+    "character": null,
     "reasoning_enabled": false
 }

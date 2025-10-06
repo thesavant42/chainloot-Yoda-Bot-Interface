@@ -51,6 +51,7 @@ async def process_user_input_and_respond(user_text: str):
 
     # 3. Send text response to the UI
     character = cl.user_session.get("character")
+    print(f"Bot's Author name is: {character}")
     text_msg = await cl.Message(
         content=full_response,
         author=character
@@ -121,7 +122,7 @@ async def on_chat_start():
     system_prompt_key = config.get("system_prompt_key") 
     cl.user_session.set("system_prompt", prompt_catalog[system_prompt_key])
     # derive character name from prompt settings
-    cl.user_session.set("character", prompt_catalog[system_prompt_key])
+    cl.user_session.set("character", system_prompt_key)
 
     llm_temp = config.get("lm_studio_temperature")
     cl.user_session.set("llm_temp", llm_temp)
@@ -229,7 +230,6 @@ async def on_settings_update(settings):
     cl.user_session.set("selected_model", settings["model"])
     cl.user_session.set("selected_voice", settings["voice"])
     cl.user_session.set("system_prompt", prompt_catalog[settings["system_prompt"]])
-    # Set character to the same value as the system prompt key
     cl.user_session.set("character", settings["system_prompt"])
     cl.user_session.set("llm_temp", settings["llm_temp"])
     cl.user_session.set("max_tokens", int(settings["max_tokens"]))
@@ -303,6 +303,8 @@ async def on_settings_update(settings):
 async def on_message(message: cl.Message):
     """Handles text messages by calling the core logic function."""
     if message.content:
+        author_name = message.author
+        print(f"Received a message from: {author_name}")
         await process_user_input_and_respond(message.content)
 
 

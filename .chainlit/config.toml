@@ -1,52 +1,30 @@
 [project]
 # List of environment variables to be provided by each user to use the app.
 user_env = []
-
-# Duration (in seconds) during which the session is saved when the connection is lost
-session_timeout = 3600
-
-# Duration (in seconds) of the user session expiry
+session_timeout = 3600  # in seconds
 user_session_timeout = 1296000  # 15 days
-
 # Enable third parties caching (e.g., LangChain cache)
 cache = true
-
 # Whether to persist user environment variables (API keys) to the database
 # Set to true to store user env vars in DB, false to exclude them for security
 persist_user_env = false
-
 # Whether to mask user environment variables (API keys) in the UI with password type
 # Set to true to show API keys as ***, false to show them as plain text
 mask_user_env = false
-
 # Authorized origins
 allow_origins = ["*"]
 
 [features]
-# Process and display HTML in messages. This can be a security risk (see https://stackoverflow.com/questions/19603097/why-is-it-dangerous-to-render-user-generated-html-or-javascript)
 unsafe_allow_html = false
-
-# Process and display mathematical expressions. This can clash with "$" characters in messages.
 latex = false
-
-# Autoscroll new user messages at the top of the window
 user_message_autoscroll = true
-
-# Automatically tag threads with the current chat profile (if a chat profile is used)
-auto_tag_thread = true
-
-# Allow users to edit their own messages
+auto_tag_thread = false
 edit_message = true
-
-# Allow users to share threads (backend + UI). Requires an app-defined on_shared_thread_view callback.
 allow_thread_sharing = false
 
-# Custom begin header
-#speech_to_text.enabled = false
-
-[features.slack]
+#[features.slack]
 # Add emoji reaction when message is received (requires reactions:write OAuth scope)
-reaction_on_message_received = false
+#reaction_on_message_received = false
 
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
@@ -65,21 +43,15 @@ reaction_on_message_received = false
     max_size_mb = 500
 
 [features.audio]
-    # Enable audio features
     enabled = true
-    # Sample rate of the audio
     sample_rate = 24000
 
 [features.mcp]
-    # Enable Model Context Protocol (MCP) features
     enabled = true
-
 [features.mcp.sse]
     enabled = true
-
 [features.mcp.streamable-http]
     enabled = true
-
 [features.mcp.stdio]
     enabled = true
     # Only the executables in the allow list can be used for MCP stdio server.
@@ -88,22 +60,12 @@ reaction_on_message_received = false
     allowed_executables = [ "npx", "uvx" ]
 
 [UI]
-# Name of the assistant.
 name = "AI"
-
 default_theme = "dark"
-
 layout = "wide"
-
-[persistence]
-enabled = true
-# default_sidebar_state = "open"
-
-# Description of the assistant. This is used for HTML tags.
 description = "Yoda Robot"
-
-# Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
-cot = "full"
+default_sidebar_state = "closed"
+cot = "full" # Can be "hidden", "tool_call" or "full".
 
 # Specify a CSS file that can be used to customize the user interface.
 # The CSS file can be served from the public directory or via an external link.
@@ -155,4 +117,7 @@ custom_meta_url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
      url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
 
 [meta]
-generated_by = "2.8.1"
+generated_by = "2.8.3"
+
+[persistence]
+enabled = false

@@ -1,96 +1,24 @@
-import os
-from dotenv import load_dotenv
-import requests
-import json
-from openai import AsyncOpenAI, OpenAI
-import asyncio
+# app.py
+
 import chainlit as cl
 from chainlit.logger import logger
-from io import BytesIO
-from chainlit.input_widget import Select, Slider, Switch
-import sys
-import wave
-from lib.message_processor import process_message_for_tts
-from lib.stt import raw_pcm_to_wav, transcribe_audio, handle_audio_chunk, handle_audio_end
-from lib.tts import fetch_available_voices, generate_speech
 import time
+from chainlit.input_widget import Select, Slider, Switch
+import json # You'll need this for on_settings_update
+from lib.stt import handle_audio_chunk, handle_audio_end
+from lib.tts import generate_speech
 
-load_dotenv()
-
-config_path = 'config.json'
-
-try:
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    print(f"Error: Failed to load {config_path}. Exiting.")
-    sys.exit(1)
-
-LM_STUDIO_URL = config["lm_studio_base_url"].rstrip('/v1')
-CHATTERBOX_URL = config["tts_base_url"]
-TTS_WEBUI_URL = config["tts_webui_url"]
-
-# Fetch available voices for Chatterbox dynamically from API
-try:
-    # Use the imported fetch_available_voices function
-    voices_data = fetch_available_voices(CHATTERBOX_URL)
-    available_voices = [v["value"] for v in voices_data]
-    if config["tts_voice"] not in available_voices:
-        print(f"Warning: Config voice {config['tts_voice']} not in available voices. Using first available.")
-        config["tts_voice"] = available_voices if available_voices else config["tts_voice"]
-except Exception as e:
-    voices_data = [{"value": config["tts_voice"], "label": config["tts_voice"]}]
-    available_voices = [config["tts_voice"]]
-    print(f"Warning: Could not fetch voices from API: {e}. Using config voice.")
-
-tts_model = config["tts_model_name"]
-tts_voice = config["tts_voice"]
-print(f"Using TTS voice: {tts_voice}")
-
-# Fetch available LLM models dynamically
-def fetch_available_models():
-    try:
-        response = requests.get(f"{LM_STUDIO_URL}/api/v0/models")
-        response.raise_for_status()
-        models_data = response.json()["data"]
-        # Filter for chat/LLM models, exclude STT/Whisper models
-        return [m["id"] for m in models_data if m["type"] == "llm" and "whisper" not in m["id"].lower()]
-    except Exception as e:
-        raise Exception(f"Could not fetch models from LM Studio: {e}")
-
-available_models = fetch_available_models()
-
-api_key = os.getenv("LM_API_KEY", config["api_key"])
-client = AsyncOpenAI(base_url=f"{LM_STUDIO_URL}/v1", api_key=api_key)
-tts_client = AsyncOpenAI(base_url=f"{CHATTERBOX_URL}/v1", api_key=api_key)
-
-# Sync client for STT transcription
-stt_client = AsyncOpenAI(base_url=f"{CHATTERBOX_URL}/v1", api_key=api_key)
-cl.instrument_openai()
-
-# Defaults from config
-default_llm_temp = 0.0
-default_max_tokens = 1000
-default_tts_speed = config["tts_speed"]
-default_tts_exaggeration = config["tts_exaggeration"]
-default_tts_voice = config["tts_voice"]
-default_tts_model = config["tts_model_name"]
-default_tts_response_format = config["tts_response_format"]
-default_tts_stream = config["tts_stream"]
-
-# Character System Prompt catalog
-prompt_catalog = {
-    "AI": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
-    "Yoda": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
-    "Stark": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message."
-}
-
-character_options = list(prompt_catalog.keys())
-
-settings = {
-    "temperature": default_llm_temp,
-    "max_tokens": default_max_tokens,
-}
+from lib.config_handler import (
+    config,
+    client,
+    tts_client,
+    stt_client,
+    prompt_catalog,
+    available_models,
+    available_voices,
+    fetch_available_models,
+    fetch_available_voices
+)
 
 async def process_user_input_and_respond(user_text: str):
     """
@@ -160,8 +88,8 @@ async def process_user_input_and_respond(user_text: str):
         tts_client=tts_client,
         text=full_response,
         voice=selected_voice,
-        tts_model=default_tts_model,
-        response_format=default_tts_response_format,
+        tts_model=config.get("tts_model_name"),
+        response_format=config.get("tts_response_format"),
         speed=tts_speed,
         exaggeration=tts_exaggeration,
         tts_config=tts_config_params
@@ -179,15 +107,15 @@ async def process_user_input_and_respond(user_text: str):
 ### Main Chat Logic Here ###
 @cl.on_chat_start
 async def on_chat_start():
-    for character_name in prompt_catalog.keys():
-        await cl.Avatar(name=character_name).send()
+    #for character_name in prompt_catalog.keys():
+     #   await cl.Avatar(name=character_name).send()
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
 
     # Load initial settings from config.json
     selected_model = config.get("last_used_model", available_models if available_models else "default_model")
     cl.user_session.set("selected_model", selected_model)
 
-    selected_voice = config.get("tts_voice", default_tts_voice)
+    selected_voice = config.get("tts_voice")
     cl.user_session.set("selected_voice", selected_voice)
 
     system_prompt_key = config.get("system_prompt_key", "AI") # Default to "AI" if not found
@@ -195,16 +123,16 @@ async def on_chat_start():
 
     cl.user_session.set("character", system_prompt_key)
 
-    llm_temp = config.get("lm_studio_temperature", default_llm_temp)
+    llm_temp = config.get("lm_studio_temperature")
     cl.user_session.set("llm_temp", llm_temp)
 
-    max_tokens = config.get("max_tokens", default_max_tokens)
+    max_tokens = config.get("max_tokens")
     cl.user_session.set("max_tokens", max_tokens)
 
-    tts_speed = config.get("tts_speed", default_tts_speed)
+    tts_speed = config.get("tts_speed")
     cl.user_session.set("tts_speed", tts_speed)
 
-    tts_exaggeration = config.get("tts_exaggeration", default_tts_exaggeration)
+    tts_exaggeration = config.get("tts_exaggeration")
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
 
     reasoning_enabled = config.get("reasoning_enabled", False)

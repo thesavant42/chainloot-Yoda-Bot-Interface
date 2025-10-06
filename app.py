@@ -7,18 +7,24 @@ from chainlit.input_widget import Select, Slider, Switch
 import json # You'll need this for on_settings_update
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
-
+from lib.text_utils import scrub_unsafe_characters
 from lib.config_handler import (
     config,
     client,
     tts_client,
     stt_client,
-    prompt_catalog,
     available_models,
     available_voices,
     fetch_available_models,
     fetch_available_voices
 )
+from chainlit.config import (
+    ChainlitConfigOverrides,
+    FeaturesSettings,
+    McpFeature,
+    UISettings,
+)
+config_path = "config.json"
 
 async def process_user_input_and_respond(user_text: str):
     """
@@ -46,13 +52,17 @@ async def process_user_input_and_respond(user_text: str):
     )
     llm_end_time = time.time()
     logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
+    
+    # Get the response content and scrub it for safety
     full_response = response.choices[0].message.content.strip()
-    logger.info(f"LLM Response: {full_response}")
+    scrubbed_response = scrub_unsafe_characters(full_response)
+    logger.info(f"LLM Response: {scrubbed_response}")
+
 
     # 3. Send text response to the UI
     character = cl.user_session.get("character")
     text_msg = await cl.Message(
-        content=full_response,
+        content=scrubbed_response, # Use the scrubbed response
         author=character
     )   .send()
        
@@ -86,7 +96,7 @@ async def process_user_input_and_respond(user_text: str):
     tts_start_time = time.time()
     audio_buffer = await generate_speech(
         tts_client=tts_client,
-        text=full_response,
+        text=scrubbed_response, # Use the scrubbed response
         voice=selected_voice,
         tts_model=config.get("tts_model_name"),
         response_format=config.get("tts_response_format"),
@@ -105,6 +115,7 @@ async def process_user_input_and_respond(user_text: str):
     ).send(for_id=text_msg.id)
 
 ### Main Chat Logic Here ###
+
 @cl.set_chat_profiles
 async def chat_profile():
     return [
@@ -112,45 +123,56 @@ async def chat_profile():
             name="Yoda",
             markdown_description="An AI who thinks he is a Jedi Master",
             icon="/public/avatars/yoda.png",
-            user_env={"system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message."}
+            user_env={
+                "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
+                "default_voice": "voices/chatterbox/reckless.wav"
+                }
         ),
         cl.ChatProfile(
             name="AI",
             markdown_description="Human <-> Cyborg Relations",
             icon="/public/avatars/ai.png",
-            user_env={"system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message."}
+            user_env={
+                "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
+                "default_voice": "voices/chatterbox/3poanewhope.wav"
+                }
         ),
         cl.ChatProfile(
             name="Stark",
             markdown_description="Billionaire genius playboy philanthropist.",
             icon="/public/avatars/stark.png",
-            user_env={"system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message."}
+            user_env={
+                "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message.",
+                "default_voice": "voices/chatterbox/rdjpersist.wav"
+                }
         ),
     ]
 
 @cl.on_chat_start
 async def on_chat_start():
-    chat_profile = cl.user_session.get("chat_profile")
+    chat_profile_name = cl.user_session.get("chat_profile")
+    user_env = cl.user_session.get("user_env")
+
     await cl.Message(
-        content=f"starting chat using the {chat_profile} chat profile"
+        content=f"starting chat using the {chat_profile_name} chat profile"
     ).send()
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
+
+    # Set the system_prompt and character for the session from the selected profile
+    #system_prompt = user_env.get("system_prompt") 
+    cl.user_session.set("system_prompt", system_prompt)
+    cl.user_session.set("character", chat_profile_name)
+
+    # Load the voice for the selected profile
+    profile_voices = config.get("profile_voices", {})
+    default_voice = user_env.get("default_voice", "voices/chatterbox/notfar.wav")
+    selected_voice = profile_voices.get(chat_profile_name, default_voice)
+    cl.user_session.set("selected_voice", selected_voice)
+
 
     # Load initial settings from config.json
     selected_model = config.get("last_used_model")
     cl.user_session.set("selected_model", selected_model)
-
-    selected_voice = config.get("tts_voice")
-    cl.user_session.set("selected_voice", selected_voice)
-
-    # Get the chat profile and system prompt from the user's session
-    chat_profile = cl.user_session.get("chat_profile")
-    user_env = cl.user_session.get("user_env")
-    system_prompt = user_env.get("system_prompt", "") # Default to empty string if not found
-
-    # Set the system_prompt and character for the session
-    cl.user_session.set("system_prompt", system_prompt)
-    cl.user_session.set("character", chat_profile)
 
     llm_temp = config.get("lm_studio_temperature")
     cl.user_session.set("llm_temp", llm_temp)
@@ -170,8 +192,7 @@ async def on_chat_start():
     # Find initial index for voice and model
     voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
     model_index = available_models.index(selected_model) if selected_model in available_models else 0
-    system_prompt_index = list(prompt_catalog.keys()).index(system_prompt_key) if system_prompt_key in prompt_catalog else 0
-    
+
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
@@ -245,13 +266,87 @@ async def on_chat_start():
     await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
     await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
 
+
+    # Send dynamic chat settings form for voice and other options
+    settings_form = await cl.ChatSettings(
+        [
+            Select(
+                id="voice",
+                label="TTS Voice",
+                values=available_voices,
+                initial_index=voice_index
+            ),
+            Select(
+                id="model",
+                label="LLM Model",
+                values=available_models,
+                initial_index=model_index
+            ),
+            Select(
+                id="model_refresh",
+                label="Model Refresh",
+                values=["No Action", "Refresh Now"],
+                initial_index=0
+            ),
+            Slider(
+                id="llm_temp",
+                label="LLM Temperature",
+                initial=llm_temp,
+                min=0.0,
+                max=2.0,
+                step=0.1
+            ),
+            Slider(
+                id="max_tokens",
+                label="Max Tokens",
+                initial=max_tokens,
+                min=100,
+                max=2000,
+                step=50
+            ),
+            Slider(
+                id="tts_speed",
+                label="TTS Speed",
+                initial=tts_speed,
+                min=0.25,
+                max=4.0,
+                step=0.05
+            ),
+            Slider(
+                id="tts_exaggeration",
+                label="TTS Exaggeration",
+                initial=tts_exaggeration,
+                min=0.0,
+                max=1.0,
+                step=0.1
+            ),
+            Slider(
+                id="tts_temperature",
+                label="TTS Temperature",
+                initial=config.get("tts_temperature"),
+                min=0.0,
+                max=2.0,
+                step=0.1
+            ),
+            Switch(
+                id="reasoning_enabled",
+                label="Enable Reasoning",
+                initial=reasoning_enabled
+            )
+        ]
+    ).send()
+
+    await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
+    await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
+
     # Settings are now managed via user_session; UI actions removed due to API incompatibility
+
 
 @cl.on_settings_update
 async def on_settings_update(settings):
+    # Update the user session with the new settings
     cl.user_session.set("selected_model", settings["model"])
     cl.user_session.set("selected_voice", settings["voice"])
-    cl.user_session.set("character", settings["system_prompt"])
     cl.user_session.set("llm_temp", settings["llm_temp"])
     cl.user_session.set("max_tokens", int(settings["max_tokens"]))
     cl.user_session.set("tts_speed", settings["tts_speed"])
@@ -265,9 +360,11 @@ async def on_settings_update(settings):
 
         # Update settings that are directly mapped to config.json
         if "voice" in settings:
-            current_config["tts_voice"] = settings["voice"]
+            chat_profile_name = cl.user_session.get("chat_profile")
+            if "profile_voices" not in current_config:
+                current_config["profile_voices"] = {}
+            current_config["profile_voices"][chat_profile_name] = settings["voice"]
         if "model" in settings:
-            # Persist the selected LLM model to last_used_model
             current_config["last_used_model"] = settings["model"]
         if "llm_temp" in settings:
             current_config["lm_studio_temperature"] = settings["llm_temp"]
@@ -304,7 +401,7 @@ async def on_settings_update(settings):
             # Update selected_model if it was removed
             selected_model = cl.user_session.get("selected_model")
             if selected_model not in updated_models:
-                new_selected = updated_models if updated_models else available_models
+                new_selected = updated_models[0] if updated_models else available_models[0]
                 cl.user_session.set("selected_model", new_selected)
                 notification += f" Switched to {new_selected}."
 
@@ -312,6 +409,13 @@ async def on_settings_update(settings):
         except Exception as e:
             await cl.Message(content=f"Failed to refresh models: {str(e)}").send()
         # Note: User can select "No Action" to stop further refreshes
+
+# This message hook runs when the user sends a new message. We use it to 
+# process user input, call an LLM, or return a response.
+
+@cl.on_chat_end
+async def on_chat_end():
+    print("The user disconnected!")
 
 @cl.on_message
 async def on_message(message: cl.Message):

@@ -95,6 +95,8 @@ default_theme = "dark"
 
 layout = "wide"
 
+[persistence]
+enabled = true
 # default_sidebar_state = "open"
 
 # Description of the assistant. This is used for HTML tags.

@@ -4,6 +4,7 @@ from chainlit.logger import logger
 import time
 from chainlit.input_widget import Select, Slider, Switch
 import json # You'll need this for on_settings_update
+from lib.message_processor import process_message_for_tts
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
 from lib.text_utils import scrub_unsafe_characters
@@ -261,16 +262,21 @@ async def process_user_input_and_respond(user_text: str):
     
     # Get the response content and scrub it for safety
     full_response = response.choices[0].message.content.strip()
-    scrubbed_response = scrub_unsafe_characters(full_response)
-    logger.info(f"LLM Response: {scrubbed_response}")
+
+    # --- NEW: Sentiment analysis pipeline ---
+    # Run message through processing pipeline
+    results = process_message_for_tts(full_response)
+    for r in results:
+        logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
+    scrubbed_response = " ".join([r["processed_chunk"] for r in results])
 
 
     # 3. Send text response to the UI
     character = cl.user_session.get("character")
     text_msg = await cl.Message(
-        content=scrubbed_response, # Use the scrubbed response
+        content=scrubbed_response,
         author=character
-    )   .send()
+    ).send()
        
     # 4. Generate and send audio response
     selected_voice = cl.user_session.get("selected_voice")

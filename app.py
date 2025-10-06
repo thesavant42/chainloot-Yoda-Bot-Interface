@@ -51,7 +51,6 @@ async def process_user_input_and_respond(user_text: str):
 
     # 3. Send text response to the UI
     character = cl.user_session.get("character")
-    print(f"Bot's Author name is: {character}")
     text_msg = await cl.Message(
         content=full_response,
         author=character
@@ -106,8 +105,32 @@ async def process_user_input_and_respond(user_text: str):
     ).send(for_id=text_msg.id)
 
 ### Main Chat Logic Here ###
+@cl.set_chat_profiles
+async def chat_profile():
+    return [
+        cl.ChatProfile(
+            name="Yoda",
+            markdown_description="An AI who thinks he is a Jedi Master",
+            icon="/public/avatars/yoda.png",
+        ),
+        cl.ChatProfile(
+            name="AI",
+            markdown_description="Human <-> Cyborg Relations",
+            icon="/public/avatars/ai.png",
+        ),
+        cl.ChatProfile(
+            name="Stark",
+            markdown_description="Billionaire genius playboy philanthropist.",
+            icon="/public/avatars/stark.png",
+        ),
+    ]
+
 @cl.on_chat_start
 async def on_chat_start():
+    chat_profile = cl.user_session.get("chat_profile")
+    await cl.Message(
+        content=f"starting chat using the {chat_profile} chat profile"
+    ).send()
     #for character_name in prompt_catalog.keys():
      #   await cl.Avatar(name=character_name).send()
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")

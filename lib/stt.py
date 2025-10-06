@@ -36,7 +36,8 @@ def raw_pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000, channels: int = 1
 
 # --- STT Core Functionality ---
 
-def transcribe_audio(stt_client: OpenAI, audio_bytes: bytes, model: str = "openai/whisper-small.en", sample_rate: int = 24000) -> str:
+async def transcribe_audio(stt_client: OpenAI, audio_bytes: bytes, model: str = "openai/whisper-small.en", sample_rate: int = 24000) -> str:
+
     """
     Transcribes audio bytes to text using the provided STT client.
 
@@ -59,7 +60,7 @@ def transcribe_audio(stt_client: OpenAI, audio_bytes: bytes, model: str = "opena
         wav_bytes: bytes = raw_pcm_to_wav(audio_bytes, sample_rate=sample_rate)
         logger.info(f"STT: Converted {len(audio_bytes)} PCM bytes to {len(wav_bytes)} WAV bytes")
         
-        transcription = stt_client.audio.transcriptions.create(
+        transcription = await stt_client.audio.transcriptions.create(
             model=model,
             file=("recorded_audio.wav", BytesIO(wav_bytes)),
         )
@@ -120,7 +121,7 @@ async def handle_audio_end(stt_client: OpenAI, audio_buffer: list[bytes] | None,
     logger.info(f"STT: Combined audio chunks - Total bytes: {len(audio_bytes)}")
     
     # Perform transcription
-    user_text = transcribe_audio(stt_client=stt_client, audio_bytes=audio_bytes, model=stt_model)
+    user_text = await transcribe_audio(stt_client=stt_client, audio_bytes=audio_bytes, model=stt_model)
     
     return user_text
 

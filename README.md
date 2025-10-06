@@ -1,5 +1,12 @@
 
-## chainloot - Custom front-end interface to chat with AI-powered Yoda animatronic, utilizing speech recognition, text to speech, voice cloning, tool usage...
+## Chainloot 
+
+ ### Custom front-end interface to chat with AI-powered Yoda animatronic
+ utilizing: 
+     - Speech Recognition
+     - Text To Speech
+     - Voice Cloning
+     - Tool usage
 
 [![A preview of the YouTube Short](https://img.youtube.com/vi/jfygCYoRjw8/0.jpg)](https://youtube.com/shorts/jfygCYoRjw8) [![A preview of the YouTube Short](https://img.youtube.com/vi/E_Typ3TmwVw/0.jpg)](https://youtube.com/shorts/E_Typ3TmwVw)
 

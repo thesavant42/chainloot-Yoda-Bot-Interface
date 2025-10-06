@@ -26,6 +26,22 @@ from chainlit.config import (
 )
 config_path = "config.json"
 
+# Canonical per-profile configuration (authoritative, no implicit fallbacks)
+PROFILE_DEFAULTS = {
+    "Yoda": {
+        "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
+        "default_voice": "voices/chatterbox/yoda.wav",
+    },
+    "AI": {
+        "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
+        "default_voice": "voices/chatterbox/3po.wav",
+    },
+    "Stark": {
+        "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message.",
+        "default_voice": "voices/chatterbox/stark.wav",
+    },
+}
+
 async def process_user_input_and_respond(user_text: str):
     """
     Handles the core logic: gets LLM response, sends text, and generates TTS audio.
@@ -71,7 +87,7 @@ async def process_user_input_and_respond(user_text: str):
     tts_speed = cl.user_session.get("tts_speed")
     tts_exaggeration = cl.user_session.get("tts_exaggeration")
     
-    # --- THIS IS THE CORRECTED, FULL DICTIONARY ---
+
     tts_config_params = {
         "cfg_weight": config.get("tts_cfg_weight"),
         "temperature": config.get("tts_temperature"),
@@ -123,149 +139,117 @@ async def chat_profile():
             name="Yoda",
             markdown_description="An AI who thinks he is a Jedi Master",
             icon="/public/avatars/yoda.png",
-            user_env={
-                "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
-                "default_voice": "voices/chatterbox/reckless.wav"
-                }
         ),
         cl.ChatProfile(
             name="AI",
             markdown_description="Human <-> Cyborg Relations",
             icon="/public/avatars/ai.png",
-            user_env={
-                "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
-                "default_voice": "voices/chatterbox/3poanewhope.wav"
-                }
         ),
         cl.ChatProfile(
             name="Stark",
             markdown_description="Billionaire genius playboy philanthropist.",
             icon="/public/avatars/stark.png",
-            user_env={
-                "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message.",
-                "default_voice": "voices/chatterbox/rdjpersist.wav"
-                }
         ),
     ]
 
 @cl.on_chat_start
 async def on_chat_start():
     chat_profile_name = cl.user_session.get("chat_profile")
-    user_env = cl.user_session.get("user_env")
+    if not chat_profile_name:
+        raise RuntimeError("chat_profile is not set. Select a profile before starting the chat.")
 
-    await cl.Message(
-        content=f"starting chat using the {chat_profile_name} chat profile"
-    ).send()
-    logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
+    # Look up canonical per-profile settings
+    if chat_profile_name not in PROFILE_DEFAULTS:
+        raise KeyError(f"No PROFILE_DEFAULTS entry for '{chat_profile_name}'")
 
-    # Set the system_prompt and character for the session from the selected profile
-    #system_prompt = user_env.get("system_prompt") 
+    defaults = PROFILE_DEFAULTS[chat_profile_name]
+
+    # Required: system_prompt, default_voice
+    if not defaults.get("system_prompt"):
+        raise KeyError(f"PROFILE_DEFAULTS['{chat_profile_name}']['system_prompt'] is missing or empty")
+    if not defaults.get("default_voice"):
+        raise KeyError(f"PROFILE_DEFAULTS['{chat_profile_name}']['default_voice'] is missing or empty")
+
+    system_prompt = defaults["system_prompt"]
+    default_voice = defaults["default_voice"]
+
+    # Optional override via config['profile_voices'] — if present, it must contain this profile
+    selected_voice = default_voice
+    if "profile_voices" in config:
+        pv = config["profile_voices"]
+        if chat_profile_name not in pv:
+            raise KeyError(
+                f"config['profile_voices'] does not contain a voice for profile '{chat_profile_name}'. "
+                "Either add it or remove 'profile_voices' from config."
+            )
+        selected_voice = pv[chat_profile_name]
+
+    # Required model from config (no implicit defaults)
+    if "last_used_model" not in config or not config["last_used_model"]:
+        raise KeyError("config['last_used_model'] is missing or empty")
+    selected_model = config["last_used_model"]
+
+    # Validate the authoritative voice/model lists (must be populated in lib.config_handler)
+    if not available_voices:
+        raise RuntimeError("available_voices is empty. Ensure TTS voices are fetched before starting the chat.")
+    if not available_models:
+        raise RuntimeError("available_models is empty. Ensure models are fetched before starting the chat.")
+    if selected_voice not in available_voices:
+        raise ValueError(f"selected_voice '{selected_voice}' not found in available_voices: {available_voices}")
+    if selected_model not in available_models:
+        raise ValueError(f"selected_model '{selected_model}' not found in available_models: {available_models}")
+
+    # Store validated session values
     cl.user_session.set("system_prompt", system_prompt)
     cl.user_session.set("character", chat_profile_name)
-
-    # Load the voice for the selected profile
-    profile_voices = config.get("profile_voices", {})
-    default_voice = user_env.get("default_voice", "voices/chatterbox/notfar.wav")
-    selected_voice = profile_voices.get(chat_profile_name, default_voice)
+    cl.user_session.set("default_voice", default_voice)
     cl.user_session.set("selected_voice", selected_voice)
-
-
-    # Load initial settings from config.json
-    selected_model = config.get("last_used_model")
     cl.user_session.set("selected_model", selected_model)
 
-    llm_temp = config.get("lm_studio_temperature")
+    # Remaining settings pulled from config (these keys must exist)
+    required_scalar_keys = ["lm_studio_temperature", "max_tokens", "tts_speed", "tts_exaggeration", "tts_temperature", "reasoning_enabled"]
+    for k in required_scalar_keys:
+        if k not in config:
+            raise KeyError(f"Missing required config key: '{k}'")
+    llm_temp = config["lm_studio_temperature"]
+    max_tokens = config["max_tokens"]
+    tts_speed = config["tts_speed"]
+    tts_exaggeration = config["tts_exaggeration"]
+    tts_temperature = config["tts_temperature"]
+    reasoning_enabled = config["reasoning_enabled"]
+
     cl.user_session.set("llm_temp", llm_temp)
-
-    max_tokens = config.get("max_tokens")
     cl.user_session.set("max_tokens", max_tokens)
-
-    tts_speed = config.get("tts_speed")
     cl.user_session.set("tts_speed", tts_speed)
-
-    tts_exaggeration = config.get("tts_exaggeration")
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
-
-    reasoning_enabled = config.get("reasoning_enabled")
     cl.user_session.set("reasoning_enabled", reasoning_enabled)
 
-    # Find initial index for voice and model
-    voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
-    model_index = available_models.index(selected_model) if selected_model in available_models else 0
+    await cl.Message(content=f"starting chat using the {chat_profile_name} chat profile").send()
+    logger.info(
+        f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}"
+    )
 
+    # Compute indices AFTER values are validated and set
+    voice_index = available_voices.index(selected_voice)
+    model_index = available_models.index(selected_model)
 
-    # Send dynamic chat settings form for voice and other options
-    settings_form = await cl.ChatSettings(
+    # Render the settings UI (only once)
+    await cl.ChatSettings(
         [
-            Select(
-                id="voice",
-                label="TTS Voice",
-                values=available_voices,
-                initial_index=voice_index
-            ),
-            Select(
-                id="model",
-                label="LLM Model",
-                values=available_models,
-                initial_index=model_index
-            ),
-            Select(
-                id="model_refresh",
-                label="Model Refresh",
-                values=["No Action", "Refresh Now"],
-                initial_index=0
-            ),
-            Slider(
-                id="llm_temp",
-                label="LLM Temperature",
-                initial=llm_temp,
-                min=0.0,
-                max=2.0,
-                step=0.1
-            ),
-            Slider(
-                id="max_tokens",
-                label="Max Tokens",
-                initial=max_tokens,
-                min=100,
-                max=2000,
-                step=50
-            ),
-            Slider(
-                id="tts_speed",
-                label="TTS Speed",
-                initial=tts_speed,
-                min=0.25,
-                max=4.0,
-                step=0.05
-            ),
-            Slider(
-                id="tts_exaggeration",
-                label="TTS Exaggeration",
-                initial=tts_exaggeration,
-                min=0.0,
-                max=1.0,
-                step=0.1
-            ),
-            Slider(
-                id="tts_temperature",
-                label="TTS Temperature",
-                initial=config.get("tts_temperature", 1.4), # Use value from config.json, default to 1.4
-                min=0.0,
-                max=2.0,
-                step=0.1
-            ),
-            Switch(
-                id="reasoning_enabled",
-                label="Enable Reasoning",
-                initial=reasoning_enabled
-            )
+            Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index),
+            Select(id="model", label="LLM Model", values=available_models, initial_index=model_index),
+            Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
+            Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
+            Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
+            Slider(id="tts_speed", label="TTS Speed", initial=tts_speed, min=0.25, max=4.0, step=0.05),
+            Slider(id="tts_exaggeration", label="TTS Exaggeration", initial=tts_exaggeration, min=0.0, max=1.0, step=0.1),
+            Slider(id="tts_temperature", label="TTS Temperature", initial=tts_temperature, min=0.0, max=2.0, step=0.1),
+            Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
         ]
     ).send()
 
     await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
     await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
-
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(

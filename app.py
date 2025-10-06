@@ -63,24 +63,24 @@ async def process_user_input_and_respond(user_text: str):
     
     # --- THIS IS THE CORRECTED, FULL DICTIONARY ---
     tts_config_params = {
-        "cfg_weight": config.get("tts_cfg_weight", 5.0),
-        "temperature": config.get("tts_temperature", 1.4),
-        "device": config.get("tts_device", "cpu"),
-        "dtype": config.get("tts_dtype", "float32"),
-        "seed": config.get("tts_seed", -1),
-        "chunked": config.get("tts_chunked", False),
-        "use_compilation": config.get("tts_use_compilation", False),
-        "max_new_tokens": config.get("tts_max_new_tokens", 512),
-        "max_cache_len": config.get("tts_max_cache_len", 0),
-        "desired_length": config.get("tts_desired_length", None),
-        "max_length": config.get("tts_max_length", None),
-        "halve_first_chunk": config.get("tts_halve_first_chunk", True),
-        "cpu_offload": config.get("tts_cpu_offload", False),
-        "cache_voice": config.get("tts_cache_voice", False),
-        "tokens_per_slice": config.get("tts_tokens_per_slice", None),
-        "remove_milliseconds": config.get("tts_remove_milliseconds", None),
-        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start", None),
-        "chunk_overlap_method": config.get("tts_chunk_overlap_method", "undefined")
+        "cfg_weight": config.get("tts_cfg_weight"),
+        "temperature": config.get("tts_temperature"),
+        "device": config.get("tts_device"),
+        "dtype": config.get("tts_dtype"),
+        "seed": config.get("tts_seed"),
+        "chunked": config.get("tts_chunked"),
+        "use_compilation": config.get("tts_use_compilation"),
+        "max_new_tokens": config.get("tts_max_new_tokens"),
+        "max_cache_len": config.get("tts_max_cache_len"),
+        "desired_length": config.get("tts_desired_length"),
+        "max_length": config.get("tts_max_length"),
+        "halve_first_chunk": config.get("tts_halve_first_chunk"),
+        "cpu_offload": config.get("tts_cpu_offload"),
+        "cache_voice": config.get("tts_cache_voice"),
+        "tokens_per_slice": config.get("tts_tokens_per_slice"),
+        "remove_milliseconds": config.get("tts_remove_milliseconds"),
+        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start"),
+        "chunk_overlap_method": config.get("tts_chunk_overlap_method")
     }
 
     tts_start_time = time.time()
@@ -112,16 +112,16 @@ async def on_chat_start():
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
 
     # Load initial settings from config.json
-    selected_model = config.get("last_used_model", available_models if available_models else "default_model")
+    selected_model = config.get("last_used_model")
     cl.user_session.set("selected_model", selected_model)
 
     selected_voice = config.get("tts_voice")
     cl.user_session.set("selected_voice", selected_voice)
 
-    system_prompt_key = config.get("system_prompt_key", "AI") # Default to "AI" if not found
-    cl.user_session.set("system_prompt", prompt_catalog.get(system_prompt_key, prompt_catalog["AI"]))
-
-    cl.user_session.set("character", system_prompt_key)
+    system_prompt_key = config.get("system_prompt_key") 
+    cl.user_session.set("system_prompt", prompt_catalog[system_prompt_key])
+    # derive character name from prompt settings
+    cl.user_session.set("character", prompt_catalog[system_prompt_key])
 
     llm_temp = config.get("lm_studio_temperature")
     cl.user_session.set("llm_temp", llm_temp)
@@ -135,7 +135,7 @@ async def on_chat_start():
     tts_exaggeration = config.get("tts_exaggeration")
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
 
-    reasoning_enabled = config.get("reasoning_enabled", False)
+    reasoning_enabled = config.get("reasoning_enabled")
     cl.user_session.set("reasoning_enabled", reasoning_enabled)
 
     # Find initial index for voice and model

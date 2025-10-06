@@ -248,8 +248,9 @@ async def on_chat_start():
         ]
     ).send()
 
-    await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
-    await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
+    # Send these once
+    # await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
+    # await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
@@ -408,7 +409,6 @@ async def on_message(message: cl.Message):
         author_name = message.author
         print(f"Received a message from: {author_name}")
         await process_user_input_and_respond(message.content)
-
 
 @cl.on_audio_chunk
 async def on_audio_chunk(chunk):

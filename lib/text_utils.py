@@ -22,7 +22,8 @@ def scrub_unsafe_characters(text: str) -> str:
     """
     # Define the allowed characters using a regex character set
     # The characters are: a-z, A-Z, 0-9, ?, !, ,, space, *
-    allowed_chars_pattern = r"[a-zA-Z0-9?,! *\n]"  # Added * and \n for newlines
+    allowed_chars_pattern = r"[a-zA-Z0-9?,!\*\n\.\'\-\; ]"  # Added * and \n for newlines
+    
     
     # Use re.findall to get all characters that match the allowed pattern
     # Then join them back into a string

@@ -224,7 +224,7 @@ async def on_chat_start():
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
     cl.user_session.set("reasoning_enabled", reasoning_enabled)
 
-    await cl.Message(content=f"starting chat using the {chat_profile_name} chat profile").send()
+    # await cl.Message(content=f"starting chat using the {chat_profile_name} chat profile").send()
     logger.info(
         f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}"
     )
@@ -247,10 +247,6 @@ async def on_chat_start():
             Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
         ]
     ).send()
-
-    # Send these once
-    # await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
-    # await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
@@ -321,8 +317,8 @@ async def on_chat_start():
         ]
     ).send()
 
-    await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
-    await cl.Message(content="Voice mode ready! Click the microphone icon, record your speech, and send – it will be transcribed automatically.").send()
+    # await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
+    await cl.Message(content="Voice mode ready! Click the microphone icon").send()
 
     # Settings are now managed via user_session; UI actions removed due to API incompatibility
 

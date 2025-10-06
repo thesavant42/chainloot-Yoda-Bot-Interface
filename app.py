@@ -131,8 +131,6 @@ async def on_chat_start():
     await cl.Message(
         content=f"starting chat using the {chat_profile} chat profile"
     ).send()
-    #for character_name in prompt_catalog.keys():
-     #   await cl.Avatar(name=character_name).send()
     logger.info(f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}")
 
     # Load initial settings from config.json
@@ -166,7 +164,7 @@ async def on_chat_start():
     voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
     model_index = available_models.index(selected_model) if selected_model in available_models else 0
     system_prompt_index = list(prompt_catalog.keys()).index(system_prompt_key) if system_prompt_key in prompt_catalog else 0
-    # character_index = character_options.index(character) if character in character_options else 0
+    
 
     # Send dynamic chat settings form for voice and other options
     settings_form = await cl.ChatSettings(
@@ -272,7 +270,6 @@ async def on_settings_update(settings):
             # Persist the selected LLM model to last_used_model
             current_config["last_used_model"] = settings["model"]
         if "system_prompt" in settings:
-            # Persist system prompt (note: prompt_catalog is defined in app.py, not config.json)
             # We'll store the key here, and the full prompt will be resolved on load.
             current_config["system_prompt_key"] = settings["system_prompt"]
         if "character" in settings:

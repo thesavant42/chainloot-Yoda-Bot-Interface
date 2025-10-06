@@ -1,5 +1,4 @@
 # app.py
-
 import chainlit as cl
 from chainlit.logger import logger
 import time
@@ -248,75 +247,6 @@ async def on_chat_start():
         ]
     ).send()
 
-    # Send dynamic chat settings form for voice and other options
-    settings_form = await cl.ChatSettings(
-        [
-            Select(
-                id="voice",
-                label="TTS Voice",
-                values=available_voices,
-                initial_index=voice_index
-            ),
-            Select(
-                id="model",
-                label="LLM Model",
-                values=available_models,
-                initial_index=model_index
-            ),
-            Select(
-                id="model_refresh",
-                label="Model Refresh",
-                values=["No Action", "Refresh Now"],
-                initial_index=0
-            ),
-            Slider(
-                id="llm_temp",
-                label="LLM Temperature",
-                initial=llm_temp,
-                min=0.0,
-                max=2.0,
-                step=0.1
-            ),
-            Slider(
-                id="max_tokens",
-                label="Max Tokens",
-                initial=max_tokens,
-                min=100,
-                max=2000,
-                step=50
-            ),
-            Slider(
-                id="tts_speed",
-                label="TTS Speed",
-                initial=tts_speed,
-                min=0.25,
-                max=4.0,
-                step=0.05
-            ),
-            Slider(
-                id="tts_exaggeration",
-                label="TTS Exaggeration",
-                initial=tts_exaggeration,
-                min=0.0,
-                max=1.0,
-                step=0.1
-            ),
-            Slider(
-                id="tts_temperature",
-                label="TTS Temperature",
-                initial=config.get("tts_temperature"),
-                min=0.0,
-                max=2.0,
-                step=0.1
-            ),
-            Switch(
-                id="reasoning_enabled",
-                label="Enable Reasoning",
-                initial=reasoning_enabled
-            )
-        ]
-    ).send()
-
     # await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
     await cl.Message(content="Voice mode ready! Click the microphone icon").send()
 
@@ -390,9 +320,6 @@ async def on_settings_update(settings):
         except Exception as e:
             await cl.Message(content=f"Failed to refresh models: {str(e)}").send()
         # Note: User can select "No Action" to stop further refreshes
-
-# This message hook runs when the user sends a new message. We use it to 
-# process user input, call an LLM, or return a response.
 
 @cl.on_chat_end
 async def on_chat_end():

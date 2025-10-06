@@ -182,5 +182,3 @@ config.json:35-36
     "system_prompt_key": "Stark",
     "character": null,
 ```
-
-

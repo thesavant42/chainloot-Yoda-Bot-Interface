@@ -112,16 +112,19 @@ async def chat_profile():
             name="Yoda",
             markdown_description="An AI who thinks he is a Jedi Master",
             icon="/public/avatars/yoda.png",
+            user_env={"system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message."}
         ),
         cl.ChatProfile(
             name="AI",
             markdown_description="Human <-> Cyborg Relations",
             icon="/public/avatars/ai.png",
+            user_env={"system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message."}
         ),
         cl.ChatProfile(
             name="Stark",
             markdown_description="Billionaire genius playboy philanthropist.",
             icon="/public/avatars/stark.png",
+            user_env={"system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message."}
         ),
     ]
 
@@ -140,10 +143,14 @@ async def on_chat_start():
     selected_voice = config.get("tts_voice")
     cl.user_session.set("selected_voice", selected_voice)
 
-    system_prompt_key = config.get("system_prompt_key") 
-    cl.user_session.set("system_prompt", prompt_catalog[system_prompt_key])
-    # derive character name from prompt settings
-    cl.user_session.set("character", system_prompt_key)
+    # Get the chat profile and system prompt from the user's session
+    chat_profile = cl.user_session.get("chat_profile")
+    user_env = cl.user_session.get("user_env")
+    system_prompt = user_env.get("system_prompt", "") # Default to empty string if not found
+
+    # Set the system_prompt and character for the session
+    cl.user_session.set("system_prompt", system_prompt)
+    cl.user_session.set("character", chat_profile)
 
     llm_temp = config.get("lm_studio_temperature")
     cl.user_session.set("llm_temp", llm_temp)
@@ -186,12 +193,6 @@ async def on_chat_start():
                 label="Model Refresh",
                 values=["No Action", "Refresh Now"],
                 initial_index=0
-            ),
-            Select(
-                id="system_prompt",
-                label="System Prompt",
-                values=list(prompt_catalog.keys()),
-                initial_index=system_prompt_index
             ),
             Slider(
                 id="llm_temp",
@@ -250,7 +251,6 @@ async def on_chat_start():
 async def on_settings_update(settings):
     cl.user_session.set("selected_model", settings["model"])
     cl.user_session.set("selected_voice", settings["voice"])
-    cl.user_session.set("system_prompt", prompt_catalog[settings["system_prompt"]])
     cl.user_session.set("character", settings["system_prompt"])
     cl.user_session.set("llm_temp", settings["llm_temp"])
     cl.user_session.set("max_tokens", int(settings["max_tokens"]))
@@ -269,12 +269,6 @@ async def on_settings_update(settings):
         if "model" in settings:
             # Persist the selected LLM model to last_used_model
             current_config["last_used_model"] = settings["model"]
-        if "system_prompt" in settings:
-            # We'll store the key here, and the full prompt will be resolved on load.
-            current_config["system_prompt_key"] = settings["system_prompt"]
-        if "character" in settings:
-            # Persist character
-            current_config["character"] = settings["character"]
         if "llm_temp" in settings:
             current_config["lm_studio_temperature"] = settings["llm_temp"]
         if "max_tokens" in settings:

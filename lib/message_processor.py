@@ -1,7 +1,9 @@
+import asyncio
+import re
 from .text_utils import scrub_unsafe_characters, chunk_text
 from .feels_classifier import classify_sentiment
 
-def process_message_for_tts(message: str) -> list[dict]:
+async def process_message_for_tts(message: str) -> list[dict]:
     """
     Processes a message by chunking, scrubbing, and classifying sentiment for each chunk.
 
@@ -18,24 +20,28 @@ def process_message_for_tts(message: str) -> list[dict]:
     # The chunk_text function handles the tokenization and splitting
     chunks = chunk_text(message)
     
+    # Classify sentiment for all chunks in parallel (non-blocking)
+    sentiment_tasks = [asyncio.get_event_loop().run_in_executor(None, classify_sentiment, chunk) for chunk in chunks]
+    sentiments = await asyncio.gather(*sentiment_tasks)
+    
     processed_results = []
 
-    for chunk in chunks:
+    for chunk, sentiment in zip(chunks, sentiments):
         # Scrub unsafe characters from the chunk
         scrubbed_chunk = scrub_unsafe_characters(chunk)
         
-        # Classify the sentiment of the scrubbed chunk
-        sentiment = classify_sentiment(scrubbed_chunk)
+        # Remove asterisk actions for TTS (e.g., *action* -> removed)
+        tts_chunk = re.sub(r'\*.*?\*', '', scrubbed_chunk).strip()
         
         # Print debug statement
         if "error" not in sentiment:
-            print(f"Debug: Sentiment for chunk - Emotion: {sentiment['emotion']}, Score: {sentiment['score']:.2f}")
+            print(f"Debug: Sentiment for chunk '{chunk}' - Emotion: {sentiment['emotion']}, Score: {sentiment['score']:.2f}")
         else:
-            print(f"Debug: Sentiment classification failed for chunk: {sentiment['error']}")
+            print(f"Debug: Sentiment classification failed for chunk '{chunk}': {sentiment['error']}")
             
         processed_results.append({
             "original_chunk": chunk,
-            "processed_chunk": scrubbed_chunk,
+            "processed_chunk": tts_chunk,
             "sentiment": sentiment
         })
         

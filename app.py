@@ -262,15 +262,12 @@ async def process_user_input_and_respond(user_text: str):
     
     # Get the response content and scrub it for safety
     full_response = response.choices[0].message.content.strip()
-    user_text = extract_user_message(full_response)  # <-- New: remove meta tokens, select only user content
-    results = process_message_for_tts(user_text)
-    
+    results = await process_message_for_tts(full_response)
     # Run message through processing pipeline
-    # results = process_message_for_tts(full_response)
+    
     for r in results:
         logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
     scrubbed_response = " ".join([r["processed_chunk"] for r in results])
-
 
     # 3. Send text response to the UI
     character = cl.user_session.get("character")

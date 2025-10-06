@@ -3,7 +3,7 @@ from transformers import AutoTokenizer
 
 # Initialize tokenizer globally to avoid reloading it on every call
 try:
-    tokenizer = AutoTokenizer.from_pretrained("joeddav/distilbert-base-uncased-go-emotions-student")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
 except Exception as e:
     print(f"Error initializing tokenizer: {e}")
     tokenizer = None
@@ -21,8 +21,8 @@ def scrub_unsafe_characters(text: str) -> str:
         The scrubbed string.
     """
     # Define the allowed characters using a regex character set
-    # The characters are: a-z, A-Z, 0-9, ?, !, ,, space
-    allowed_chars_pattern = r"[a-zA-Z0-9?,! ]"
+    # The characters are: a-z, A-Z, 0-9, ?, !, ,, space, *
+    allowed_chars_pattern = r"[a-zA-Z0-9?,! *\n]"  # Added * and \n for newlines
     
     # Use re.findall to get all characters that match the allowed pattern
     # Then join them back into a string
@@ -52,13 +52,13 @@ def chunk_text(text: str, max_tokens: int = 200) -> list[str]:
     for token in tokens:
         current_chunk_tokens.append(token)
         if len(current_chunk_tokens) >= max_tokens:
-            chunk_text = tokenizer.decode(current_chunk_tokens)
+            chunk_text = tokenizer.decode(current_chunk_tokens, skip_special_tokens=True)
             chunks.append(chunk_text)
             current_chunk_tokens = []
 
     # Add any remaining tokens as the last chunk
     if current_chunk_tokens:
-        chunk_text = tokenizer.decode(current_chunk_tokens)
+        chunk_text = tokenizer.decode(current_chunk_tokens, skip_special_tokens=True)
         chunks.append(chunk_text)
 
     return chunks

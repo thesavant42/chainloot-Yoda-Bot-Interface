@@ -7,7 +7,7 @@ user_session_timeout = 1296000  # 15 days
 cache = true
 # Whether to persist user environment variables (API keys) to the database
 # Set to true to store user env vars in DB, false to exclude them for security
-persist_user_env = false
+persist_user_env = true
 # Whether to mask user environment variables (API keys) in the UI with password type
 # Set to true to show API keys as ***, false to show them as plain text
 mask_user_env = false
@@ -66,11 +66,7 @@ layout = "wide"
 description = "Yoda Robot"
 default_sidebar_state = "closed"
 cot = "full" # Can be "hidden", "tool_call" or "full".
-
-# Specify a CSS file that can be used to customize the user interface.
-# The CSS file can be served from the public directory or via an external link.
-custom_css = "/public/globals.css"
-
+custom_css = '/public/globals.css'
 # Specify additional attributes for a custom CSS file
 # custom_css_attributes = "media=\"print\""
 
@@ -116,8 +112,29 @@ custom_meta_url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
      icon_url = "https://avatars.githubusercontent.com/u/11545906?s=48&v=4"
      url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
 
+[[UI.header_links]]
+     name = "TTS WebUI React UI"
+     display_name = "TTS WebUI React UI"
+     icon_url = "https://avatars.githubusercontent.com/u/69631?s=48&v=4"
+     url = "http://192.168.1.98:3000/"
+
+[[UI.header_links]]
+     name = "TTS WebUI Gradio UI"
+     display_name = "TTS WebUI Gradio UI"
+     icon_url = "https://avatars.githubusercontent.com/u/51063788?s=48&v=4"
+     url = "http://192.168.1.98:7770/"
+
+[[UI.header_links]]
+     name = "Chainlit DeepWiki"
+     display_name = "Chainlit DeepWiki"
+     icon_url = "https://avatars.githubusercontent.com/u/128686189?s=48&v=4"
+     url = "https://deepwiki.com/Chainlit/chainlit"
+
+[[UI.header_links]]
+     name = "Chainlit Docs"
+     display_name = "Chainlit Docs"
+     icon_url = "https://avatars.githubusercontent.com/u/128686189?s=48&v=4"
+     url = "https://docs.chainlit.io/"
+
 [meta]
 generated_by = "2.8.3"
-
-[persistence]
-enabled = false

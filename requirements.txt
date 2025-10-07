@@ -6,3 +6,5 @@ openai
 torch
 transformers
 asyncpg
+aiosqlite
+aiosqlite

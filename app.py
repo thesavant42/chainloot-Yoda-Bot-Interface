@@ -8,15 +8,6 @@ import json # You'll need this for on_settings_update
 import os
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 
-class FixedSQLAlchemyDataLayer(SQLAlchemyDataLayer):
-    def __init__(self, conninfo: str):
-        super().__init__(conninfo)
-        self.storage_client = self.engine
-
-    async def __aenter__(self):
-        await self.create_tables()
-        self.storage_client = self.engine
-        return self
 from lib.message_processor import process_message_for_tts
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
@@ -47,7 +38,7 @@ def get_data_layer():
     if db_url:
         if db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return FixedSQLAlchemyDataLayer(conninfo=db_url)
+        return SQLAlchemyDataLayer(conninfo=db_url)
     return None
 
 starters = [

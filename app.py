@@ -1,5 +1,6 @@
 # app.py
 import chainlit as cl
+from mcp import ClientSession
 from chainlit.logger import logger
 import time
 from chainlit.input_widget import Select, Slider, Switch
@@ -25,6 +26,31 @@ from chainlit.config import (
     UISettings,
 )
 config_path = "config.json"
+
+starters = [
+    cl.Starter(
+        label="Say hi",
+        message="Start a conversation with a greeting",
+        icon="https://picsum.photos/300",
+    ),
+    cl.Starter(
+        label="Ask for help",
+        message="Ask for help with something",
+        icon="https://picsum.photos/350",
+    ),
+]
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """Called when an MCP connection is established"""
+    # Your connection initialization code here
+    # This handler is required for MCP to work
+    
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Called when an MCP connection is terminated"""
+    # Your cleanup code here
+    # This handler is optional
 
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
@@ -118,22 +144,27 @@ async def chat_profile():
         cl.ChatProfile(
             name="Yoda",
             markdown_description="An AI who thinks he is a Jedi Master",
+            starters=starters,
             icon="/public/avatars/yoda.png",
+            
         ),
         cl.ChatProfile(
             name="AI",
             markdown_description="Human <-> Cyborg Relations",
+            starters=starters,
             icon="/public/avatars/ai.png",
         ),
         cl.ChatProfile(
             name="Stark",
             markdown_description="Billionaire genius playboy philanthropist.",
+            starters=starters,
             icon="/public/avatars/stark.png",
         ),
     ]
 
 @cl.on_chat_start
 async def on_chat_start():
+    print("A new chat session has started!")
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:
         raise RuntimeError("chat_profile is not set. Select a profile before starting the chat.")
@@ -152,8 +183,7 @@ async def on_chat_start():
 
     system_prompt = defaults["system_prompt"]
     default_voice = defaults["default_voice"]
-
-    # Optional override via config['profile_voices'] — if present, it must contain this profile
+    
     selected_voice = default_voice
     if "profile_voices" in config:
         pv = config["profile_voices"]
@@ -204,7 +234,6 @@ async def on_chat_start():
     cl.user_session.set("tts_exaggeration", tts_exaggeration)
     cl.user_session.set("reasoning_enabled", reasoning_enabled)
 
-    # await cl.Message(content=f"starting chat using the {chat_profile_name} chat profile").send()
     logger.info(
         f"AUDIO DIAG: Chat start - Session ID: {cl.context.session.id}, STT client base: {stt_client.base_url}"
     )
@@ -228,10 +257,8 @@ async def on_chat_start():
         ]
     ).send()
 
-    # await cl.Message(content=f"Model: {selected_model}  Voice: {selected_voice}").send()
     await cl.Message(content="Voice mode ready! Click the microphone icon").send()
 
-    # Settings are now managed via user_session; UI actions removed due to API incompatibility
 
 async def process_user_input_and_respond(user_text: str):
     """
@@ -329,8 +356,12 @@ async def on_message(message: cl.Message):
     """Handles text messages by calling the core logic function."""
     if message.content:
         author_name = message.author
-        print(f"Received a message from: {author_name}")
+        print(f"Received a message from User: {author_name}")
         await process_user_input_and_respond(message.content)
+
+@cl.on_stop
+def on_stop():
+    print("The user wants to stop the task!")
 
 @cl.on_audio_chunk
 async def on_audio_chunk(chunk):

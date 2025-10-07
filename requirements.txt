@@ -1,0 +1,8 @@
+chainlit
+mcp
+requests
+python-dotenv
+openai
+torch
+transformers
+asyncpg

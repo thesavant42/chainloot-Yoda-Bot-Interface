@@ -18,6 +18,7 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     logger.error(f"Fatal: Failed to load config.json: {e}")
     sys.exit(1)
 
+## Is this even used anymore???? TODO
 # --- Static Data & Constants ---
 prompt_catalog = {
     "AI": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",

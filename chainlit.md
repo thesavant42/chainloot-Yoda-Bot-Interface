@@ -1,14 +1,62 @@
-# Welcome to Chainlit! 🚀🤖
+# Welcome to Chainlit!
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+- **GitHub**
+ [https://github.com/thesavant42/chainloot-Yoda-Bot-Interface](https://github.com/thesavant42/chainloot-Yoda-Bot-Interface)
 
-## Useful Links 🔗
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
+### Homepage
 
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
+- [https://hackaday.io/project/195655-hacking-seasonal-yoda](https://hackaday.io/project/195655-hacking-seasonal-yoda)
 
-## Welcome screen
+### Endpoints
 
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+- **OpenAI-Compatible Text to Speech (TTS) API:**  
+  `http://192.168.1.98:7778/v1/audio/speech` (POST)
+- **OpenAI-Compatible Whisper (STT) API:**  
+  `http://192.168.1.98:7778/v1/audio/transcriptions` (POST)
+- **TTS-WebUI Audio Models List (chatterbox):**  
+ [http://192.168.1.98:7778/v1/audio/models](http://192.168.1.98:7778/v1/audio/models)
+- **List Voices API (chatterbox-tts):**  
+ [http://192.168.1.98:7778/v1/audio/voices](http://192.168.1.98:7778/v1/audio/voices)
+- **LM Studio - List Models (LM Studio API):**  
+ [http://192.168.1.98:1234/api/v0/models](http://192.168.1.98:1234/api/v0/models)  
+- **LM Studio - (OpenAPI) Chat Completion API:**  
+  `http://192.168.1.98:1234/v1` (POST)
+
+### API Docs
+
+- **SwaggerDoc:**  
+  [http://192.168.1.98:7778/docs#/](http://192.168.1.98:7778/docs#/)
+- **OpenAPI JSON:**  
+  [http://192.168.1.98:7778/openapi.json](http://192.168.1.98:7778/openapi.json)
+- **Gradio UI for TTS-WebUI:**  
+  [http://192.168.1.98:7770/](http://192.168.1.98:7770/)
+- **Gradio UI API Doc:**  
+  [http://192.168.1.98:7770/openapi.json](http://192.168.1.98:7770/openapi.json)
+- **React UI for TTS-WebUI:**  
+  [http://192.168.1.98:3000/](http://192.168.1.98:3000/)
+
+### Folder Structure
+
+**chainlit/** Top Level Directory
+- `docs/` — Folder for documentation and support files, API schema docs
+- `docs/chainlit-docs/`
+- `docs/tts-webui-apis/` — OpenAPI docs for Chatterbox, TTS-WebUI
+- `README.md` — This file
+- `app.py` — Main chainlit app code
+- `.env` — API keys go here (if needed)
+
+## External Documentation
+
+Docs that are for the infrastructure
+
+### Chainlit Docs
+
+- [https://docs.chainlit.io/get-started/overview](https://docs.chainlit.io/get-started/overview)
+- [https://deepwiki.com/Chainlit/chainlit](https://deepwiki.com/Chainlit/chainlit)
+
+### TTS-WebUI
+
+- [https://github.com/rsxdalv/TTS-WebUI](https://github.com/rsxdalv/TTS-WebUI)
+
+[![A preview of the YouTube Short](https://img.youtube.com/vi/sbZzu1HrOTU/0.jpg)](https://youtube.com/shorts/sbZzu1HrOTU)[![A preview of the YouTube Short](https://img.youtube.com/vi/jSkOm2LKjzg/0.jpg)](https://youtube.com/shorts/jSkOm2LKjzg)

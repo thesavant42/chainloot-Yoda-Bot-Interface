@@ -6,7 +6,6 @@ import time
 from chainlit.input_widget import Select, Slider, Switch
 import json # You'll need this for on_settings_update
 import os
-from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 
 from lib.message_processor import process_message_for_tts
 from lib.stt import handle_audio_chunk, handle_audio_end
@@ -30,16 +29,6 @@ from chainlit.config import (
 )
 
 config_path = "config.json"
-
-# Configure data layer for PostgreSQL
-@cl.data_layer
-def get_data_layer():
-    db_url = os.getenv("DATABASE_URL")
-    if db_url:
-        if db_url.startswith("postgresql://"):
-            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return SQLAlchemyDataLayer(conninfo=db_url)
-    return None
 
 starters = [
     cl.Starter(
@@ -416,3 +405,14 @@ async def on_audio_end():
 @cl.on_chat_end
 async def on_chat_end():
     print("The user disconnected!")
+
+@cl.password_auth_callback
+def auth_callback(username: str, password: str):
+    # Simple authentication - check against environment variables
+    expected_username = os.getenv("CHAINLIT_USERNAME")
+    expected_password = os.getenv("CHAINLIT_PASSWORD")
+    
+    if username == expected_username and password == expected_password:
+        return cl.User(identifier=username, metadata={"role": "admin"})
+    else:
+        return None

@@ -1,0 +1,17 @@
+{
+  "custom_fonts": [],
+  "variables": {
+    "light": {
+      "--scrollbar-width": "8px",
+      "--scrollbar-thumb-color": "hsl(var(--primary))",
+      "--scrollbar-track-color": "hsl(var(--background))",
+      "--scrollbar-thumb-hover-color": "hsl(var(--primary))"
+    },
+    "dark": {
+      "--scrollbar-width": "8px",
+      "--scrollbar-thumb-color": "hsl(var(--primary))",
+      "--scrollbar-track-color": "hsl(var(--background))",
+      "--scrollbar-thumb-hover-color": "hsl(var(--primary))"
+    }
+  }
+}

@@ -4,9 +4,8 @@ from mcp import ClientSession
 from chainlit.logger import logger
 import time
 from chainlit.input_widget import Select, Slider, Switch
-import json # You'll need this for on_settings_update
+import json
 import os
-
 from lib.message_processor import process_message_for_tts
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
@@ -19,7 +18,7 @@ from lib.config_handler import (
     available_models,
     available_voices,
     fetch_available_models,
-    fetch_available_voices
+    fetch_available_voices,
 )
 from chainlit.config import (
     ChainlitConfigOverrides,
@@ -43,18 +42,6 @@ starters = [
     ),
 ]
 
-@cl.on_mcp_connect
-async def on_mcp_connect(connection, session: ClientSession):
-    """Called when an MCP connection is established"""
-    # Your connection initialization code here
-    # This handler is required for MCP to work
-    
-@cl.on_mcp_disconnect
-async def on_mcp_disconnect(name: str, session: ClientSession):
-    """Called when an MCP connection is terminated"""
-    # Your cleanup code here
-    # This handler is optional
-
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
     "Yoda": {
@@ -72,6 +59,112 @@ PROFILE_DEFAULTS = {
 }
 
 ### Main Chat Logic Here ###
+
+async def process_user_input_and_respond(user_text: str):
+    """
+    Handles the core logic: gets LLM response, sends text, and generates TTS audio.
+    """
+    # 1. Get settings from the user session
+    selected_model = cl.user_session.get("selected_model")
+    system_prompt = cl.user_session.get("system_prompt")
+    llm_temp = cl.user_session.get("llm_temp")
+    max_tokens = cl.user_session.get("max_tokens")
+    reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
+    if reasoning_enabled:
+        system_prompt += " Think step by step before responding."
+
+    # 2. Get LLM response
+    llm_start_time = time.time()
+    response = await client.chat.completions.create(
+        model=selected_model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_text}
+        ],
+        temperature=llm_temp,
+        max_tokens=max_tokens,
+    )
+    llm_end_time = time.time()
+    logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
+    
+    # Get the response content and scrub it for safety
+    full_response = response.choices[0].message.content.strip()
+    results = await process_message_for_tts(full_response)
+    # Run message through processing pipeline
+    
+    for r in results:
+        logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
+    scrubbed_response = " ".join([r["processed_chunk"] for r in results])
+
+    # 3. Send text response to the UI
+    character = cl.user_session.get("character")
+    text_msg = await cl.Message(
+        content=scrubbed_response,
+        author=character
+    ).send()
+       
+    # 4. Generate and send audio response
+    selected_voice = cl.user_session.get("selected_voice")
+    tts_speed = cl.user_session.get("tts_speed")
+    tts_exaggeration = cl.user_session.get("tts_exaggeration")
+    
+
+    tts_config_params = {
+        "cfg_weight": config.get("tts_cfg_weight"),
+        "temperature": config.get("tts_temperature"),
+        "device": config.get("tts_device"),
+        "dtype": config.get("tts_dtype"),
+        "seed": config.get("tts_seed"),
+        "chunked": config.get("tts_chunked"),
+        "use_compilation": config.get("tts_use_compilation"),
+        "max_new_tokens": config.get("tts_max_new_tokens"),
+        "max_cache_len": config.get("tts_max_cache_len"),
+        "desired_length": config.get("tts_desired_length"),
+        "max_length": config.get("tts_max_length"),
+        "halve_first_chunk": config.get("tts_halve_first_chunk"),
+        "cpu_offload": config.get("tts_cpu_offload"),
+        "cache_voice": config.get("tts_cache_voice"),
+        "tokens_per_slice": config.get("tts_tokens_per_slice"),
+        "remove_milliseconds": config.get("tts_remove_milliseconds"),
+        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start"),
+        "chunk_overlap_method": config.get("tts_chunk_overlap_method")
+    }
+
+    tts_start_time = time.time()
+    audio_buffer = await generate_speech(
+        tts_client=tts_client,
+        text=scrubbed_response, # Use the scrubbed response
+        voice=selected_voice,
+        tts_model=config.get("tts_model_name"),
+        response_format=config.get("tts_response_format"),
+        speed=tts_speed,
+        exaggeration=tts_exaggeration,
+        tts_config=tts_config_params
+    )
+    tts_end_time = time.time()
+    logger.info(f"PERF: TTS call took {tts_end_time - tts_start_time:.2f} seconds.")
+
+    await cl.Audio(
+        name="response_audio.wav",
+        content=audio_buffer,
+        mime="audio/wav",
+        auto_play=True
+    ).send(for_id=text_msg.id)
+
+### Auth HANDLING ###
+
+@cl.password_auth_callback
+def auth_callback(username: str, password: str):
+    # Simple authentication - check against environment variables
+    expected_username = os.getenv("CHAINLIT_USERNAME")
+    expected_password = os.getenv("CHAINLIT_PASSWORD")
+    
+    if username == expected_username and password == expected_password:
+        return cl.User(identifier=username, metadata={"role": "admin"})
+    else:
+        return None
+
+### Settings Persistence ###
 
 @cl.on_settings_update
 async def on_settings_update(settings):
@@ -140,6 +233,28 @@ async def on_settings_update(settings):
         except Exception as e:
             await cl.Message(content=f"Failed to refresh models: {str(e)}").send()
         # Note: User can select "No Action" to stop further refreshes
+
+### User Stops Task ###
+
+@cl.on_stop
+def on_stop():
+    print("The user wants to stop the task!")
+
+### MCP HANDLING ###
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """Called when an MCP connection is established"""
+    # Your connection initialization code here
+    # This handler is required for MCP to work
+    
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Called when an MCP connection is terminated"""
+    # Your cleanup code here
+    # This handler is optional
+
+### Chat Profile Functions ###
 
 @cl.set_chat_profiles
 async def chat_profile():
@@ -260,99 +375,9 @@ async def on_chat_start():
         ]
     ).send()
 
-    await cl.Message(content="Voice mode ready! Click the microphone icon").send()
-
-
-async def process_user_input_and_respond(user_text: str):
-    """
-    Handles the core logic: gets LLM response, sends text, and generates TTS audio.
-    """
-    # 1. Get settings from the user session
-    selected_model = cl.user_session.get("selected_model")
-    system_prompt = cl.user_session.get("system_prompt")
-    llm_temp = cl.user_session.get("llm_temp")
-    max_tokens = cl.user_session.get("max_tokens")
-    reasoning_enabled = cl.user_session.get("reasoning_enabled", False)
-    if reasoning_enabled:
-        system_prompt += " Think step by step before responding."
-
-    # 2. Get LLM response
-    llm_start_time = time.time()
-    response = await client.chat.completions.create(
-        model=selected_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_text}
-        ],
-        temperature=llm_temp,
-        max_tokens=max_tokens,
-    )
-    llm_end_time = time.time()
-    logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
-    
-    # Get the response content and scrub it for safety
-    full_response = response.choices[0].message.content.strip()
-    results = await process_message_for_tts(full_response)
-    # Run message through processing pipeline
-    
-    for r in results:
-        logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
-    scrubbed_response = " ".join([r["processed_chunk"] for r in results])
-
-    # 3. Send text response to the UI
-    character = cl.user_session.get("character")
-    text_msg = await cl.Message(
-        content=scrubbed_response,
-        author=character
-    ).send()
-       
-    # 4. Generate and send audio response
-    selected_voice = cl.user_session.get("selected_voice")
-    tts_speed = cl.user_session.get("tts_speed")
-    tts_exaggeration = cl.user_session.get("tts_exaggeration")
-    
-
-    tts_config_params = {
-        "cfg_weight": config.get("tts_cfg_weight"),
-        "temperature": config.get("tts_temperature"),
-        "device": config.get("tts_device"),
-        "dtype": config.get("tts_dtype"),
-        "seed": config.get("tts_seed"),
-        "chunked": config.get("tts_chunked"),
-        "use_compilation": config.get("tts_use_compilation"),
-        "max_new_tokens": config.get("tts_max_new_tokens"),
-        "max_cache_len": config.get("tts_max_cache_len"),
-        "desired_length": config.get("tts_desired_length"),
-        "max_length": config.get("tts_max_length"),
-        "halve_first_chunk": config.get("tts_halve_first_chunk"),
-        "cpu_offload": config.get("tts_cpu_offload"),
-        "cache_voice": config.get("tts_cache_voice"),
-        "tokens_per_slice": config.get("tts_tokens_per_slice"),
-        "remove_milliseconds": config.get("tts_remove_milliseconds"),
-        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start"),
-        "chunk_overlap_method": config.get("tts_chunk_overlap_method")
-    }
-
-    tts_start_time = time.time()
-    audio_buffer = await generate_speech(
-        tts_client=tts_client,
-        text=scrubbed_response, # Use the scrubbed response
-        voice=selected_voice,
-        tts_model=config.get("tts_model_name"),
-        response_format=config.get("tts_response_format"),
-        speed=tts_speed,
-        exaggeration=tts_exaggeration,
-        tts_config=tts_config_params
-    )
-    tts_end_time = time.time()
-    logger.info(f"PERF: TTS call took {tts_end_time - tts_start_time:.2f} seconds.")
-
-    await cl.Audio(
-        name="response_audio.wav",
-        content=audio_buffer,
-        mime="audio/wav",
-        auto_play=True
-    ).send(for_id=text_msg.id)
+@cl.on_chat_end
+async def on_chat_end():
+    print("The user disconnected!")
 
 @cl.on_message
 async def on_message(message: cl.Message):
@@ -362,9 +387,7 @@ async def on_message(message: cl.Message):
         print(f"Received a message from User: {author_name}")
         await process_user_input_and_respond(message.content)
 
-@cl.on_stop
-def on_stop():
-    print("The user wants to stop the task!")
+### Audio Handling ###
 
 @cl.on_audio_chunk
 async def on_audio_chunk(chunk):
@@ -401,18 +424,3 @@ async def on_audio_end():
     except Exception as e:
         logger.error(f"AUDIO DIAG: Error in on_audio_end: {str(e)}")
         await cl.Message(content=f"Error processing audio: {str(e)}").send()
-
-@cl.on_chat_end
-async def on_chat_end():
-    print("The user disconnected!")
-
-@cl.password_auth_callback
-def auth_callback(username: str, password: str):
-    # Simple authentication - check against environment variables
-    expected_username = os.getenv("CHAINLIT_USERNAME")
-    expected_password = os.getenv("CHAINLIT_PASSWORD")
-    
-    if username == expected_username and password == expected_password:
-        return cl.User(identifier=username, metadata={"role": "admin"})
-    else:
-        return None

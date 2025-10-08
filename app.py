@@ -10,6 +10,9 @@ from lib.message_processor import process_message_for_tts
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
 from lib.text_utils import scrub_unsafe_characters
+from typing import Dict, Any, List
+from mcp import ClientSession
+from mcp.types import CallToolResult, TextContent
 from lib.config_handler import (
     config,
     client,
@@ -28,7 +31,7 @@ from chainlit.config import (
 )
 
 config_path = "config.json"
-
+mcp_tools_cache = {}
 starters = [
     cl.Starter(
         label="Say hi",
@@ -45,15 +48,15 @@ starters = [
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
     "Yoda": {
-        "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message.",
+        "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. You can access tools using MCP servers.",
         "default_voice": "voices/chatterbox/yoda.wav",
     },
     "AI": {
-        "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief. No more than 2 sentences per message.",
+        "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief.  You can access tools using MCP servers.",
         "default_voice": "voices/chatterbox/3po.wav",
     },
     "Stark": {
-        "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message.",
+        "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message. You can access tools using MCP servers.",
         "default_voice": "voices/chatterbox/stark.wav",
     },
 }
@@ -245,14 +248,69 @@ def on_stop():
 @cl.on_mcp_connect
 async def on_mcp_connect(connection, session: ClientSession):
     """Called when an MCP connection is established"""
-    # Your connection initialization code here
-    # This handler is required for MCP to work
-    
+    # List available tools
+    cl.Message(f"Connected to MCP server: {connection.name}").send()
+
+    try:
+        result = await session.list_tools()
+
+        tools = [
+            {
+                "name": t.name,
+                "description": t.description,
+                "input_schema": t.inputSchema,
+            }
+            for t in result.tools
+        ]
+
+        mcp_tools_cache[connection.name] = tools
+
+        mcp_tools = cl.user_session.get("mcp_tools", {})
+        mcp_tools[connection.name] = tools
+        cl.user_session.set("mcp_tools", mcp_tools)
+
+        await cl.Message(
+            f"Found {len(tools)} tools from {connection.name} MCP server."
+        ).send()
+    except Exception as e:
+        await cl.Message(f"Error listing tools from MCP server: {str(e)}").send()
+
 @cl.on_mcp_disconnect
 async def on_mcp_disconnect(name: str, session: ClientSession):
     """Called when an MCP connection is terminated"""
     # Your cleanup code here
-    # This handler is optional
+    if name in mcp_tools_cache:
+        del mcp_tools_cache[name]
+
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    if name in mcp_tools:
+        del mcp_tools[name]
+        cl.user_session.set("mcp_tools", mcp_tools)
+
+    await cl.Message(f"Disconnected from MCP server: {name}").send()
+
+@cl.step(type="tool")
+async def execute_tool(tool_name: str, tool_input: Dict[str, Any]):
+    print("Executing tool:", tool_name)
+    print("Tool input:", tool_input)
+    mcp_name = None
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+
+    for conn_name, tools in mcp_tools.items():
+        if any(tool["name"] == tool_name for tool in tools):
+            mcp_name = conn_name
+            break
+
+    if not mcp_name:
+        return {"error": f"Tool '{tool_name}' not found in any connected MCP server"}
+
+    mcp_session, _ = cl.context.session.mcp_sessions.get(mcp_name)
+
+    try:
+        result = await mcp_session.call_tool(tool_name, tool_input)
+        return result
+    except Exception as e:
+        return {"error": f"Error calling tool '{tool_name}': {str(e)}"}
 
 ### Chat Profile Functions ###
 

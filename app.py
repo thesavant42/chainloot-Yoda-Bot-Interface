@@ -249,7 +249,7 @@ def on_stop():
 async def on_mcp_connect(connection, session: ClientSession):
     """Called when an MCP connection is established"""
     # List available tools
-    cl.Message(f"Connected to MCP server: {connection.name}").send()
+    await cl.Message(f"Connected to MCP server: {connection.name}").send()
 
     try:
         result = await session.list_tools()

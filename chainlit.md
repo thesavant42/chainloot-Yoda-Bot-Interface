@@ -27,6 +27,8 @@
 [http://192.168.1.98:7778/v1/audio/voices](http://192.168.1.98:7778/v1/audio/voices)
 - **LM Studio - List Models (LM Studio API):**
 [http://192.168.1.98:1234/api/v0/models](http://192.168.1.98:1234/api/v0/models)
+- **FAKE S3**
+[http://192.168.1.98:4566/my-bucket](http://192.168.1.98:4566/my-bucket)
 - **LM Studio - (OpenAPI) Chat Completion API:**
  `http://192.168.1.98:1234/v1` (POST)
 - **OpenAI-Compatible Text to Speech (TTS) API:**

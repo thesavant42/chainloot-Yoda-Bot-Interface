@@ -1,3 +1,5 @@
+# Test for Asyncronous Postgresql connectivity
+# change DB credentials to real ones
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 import asyncio

@@ -1,3 +1,4 @@
+# Early feelings classifier test script
 import torch
 import warnings
 from transformers import pipeline, AutoTokenizer, logging

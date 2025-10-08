@@ -30,7 +30,7 @@
     "tts_chunk_overlap_method": "undefined",
     "tts_webui_url": "http://192.168.1.98:7770",
     "whisper_model": "openai/whisper-small.en",
-    "lm_studio_temperature": 1.1,
+    "lm_studio_temperature": 0.8,
     "max_tokens": 1000,
     "system_prompt_key": "Stark",
     "character": null,

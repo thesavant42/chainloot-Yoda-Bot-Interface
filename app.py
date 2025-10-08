@@ -4,6 +4,7 @@ from mcp import ClientSession
 from chainlit.logger import logger
 import time
 from chainlit.input_widget import Select, Slider, Switch
+from chainlit.data.storage_clients.s3 import S3StorageClient
 import json
 import os
 from lib.message_processor import process_message_for_tts
@@ -13,6 +14,7 @@ from lib.text_utils import scrub_unsafe_characters
 from typing import Dict, Any, List
 from mcp import ClientSession
 from mcp.types import CallToolResult, TextContent
+from dotenv import load_dotenv
 from lib.config_handler import (
     config,
     client,
@@ -29,7 +31,7 @@ from chainlit.config import (
     McpFeature,
     UISettings,
 )
-
+storage_client = S3StorageClient(bucket="my-bucket")
 config_path = "config.json"
 mcp_tools_cache = {}
 starters = [
@@ -238,10 +240,9 @@ async def on_settings_update(settings):
         # Note: User can select "No Action" to stop further refreshes
 
 ### User Stops Task ###
-
 @cl.on_stop
 def on_stop():
-    print("The user wants to stop the task!")
+    print("The user stopped the task!")
 
 ### MCP HANDLING ###
 
@@ -249,31 +250,19 @@ def on_stop():
 async def on_mcp_connect(connection, session: ClientSession):
     """Called when an MCP connection is established"""
     # List available tools
-    await cl.Message(f"Connected to MCP server: {connection.name}").send()
-
-    try:
-        result = await session.list_tools()
-
-        tools = [
-            {
-                "name": t.name,
-                "description": t.description,
-                "input_schema": t.inputSchema,
-            }
-            for t in result.tools
-        ]
-
-        mcp_tools_cache[connection.name] = tools
-
-        mcp_tools = cl.user_session.get("mcp_tools", {})
-        mcp_tools[connection.name] = tools
-        cl.user_session.set("mcp_tools", mcp_tools)
-
-        await cl.Message(
-            f"Found {len(tools)} tools from {connection.name} MCP server."
-        ).send()
-    except Exception as e:
-        await cl.Message(f"Error listing tools from MCP server: {str(e)}").send()
+    result = await session.list_tools()
+    
+    # Process tool metadata
+    tools = [{
+        "name": t.name,
+        "description": t.description,
+        "input_schema": t.inputSchema,
+    } for t in result.tools]
+    
+    # Store tools for later use
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    mcp_tools[connection.name] = tools
+    cl.user_session.set("mcp_tools", mcp_tools)
 
 @cl.on_mcp_disconnect
 async def on_mcp_disconnect(name: str, session: ClientSession):
@@ -344,11 +333,9 @@ async def on_chat_start():
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:
         raise RuntimeError("chat_profile is not set. Select a profile before starting the chat.")
-
     # Look up canonical per-profile settings
     if chat_profile_name not in PROFILE_DEFAULTS:
         raise KeyError(f"No PROFILE_DEFAULTS entry for '{chat_profile_name}'")
-
     defaults = PROFILE_DEFAULTS[chat_profile_name]
 
     # Required: system_prompt, default_voice
@@ -356,10 +343,9 @@ async def on_chat_start():
         raise KeyError(f"PROFILE_DEFAULTS['{chat_profile_name}']['system_prompt'] is missing or empty")
     if not defaults.get("default_voice"):
         raise KeyError(f"PROFILE_DEFAULTS['{chat_profile_name}']['default_voice'] is missing or empty")
-
     system_prompt = defaults["system_prompt"]
+
     default_voice = defaults["default_voice"]
-    
     selected_voice = default_voice
     if "profile_voices" in config:
         pv = config["profile_voices"]

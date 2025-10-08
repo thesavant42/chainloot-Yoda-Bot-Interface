@@ -107,7 +107,7 @@ custom_meta_url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
 
 # Specify optional one or more custom links in the header.
 [[UI.header_links]]
-     name = "Github"
+     name = "Github Project"
      display_name = "Github"
      icon_url = "https://avatars.githubusercontent.com/u/11545906?s=48&v=4"
      url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
@@ -123,18 +123,6 @@ custom_meta_url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
      display_name = "TTS WebUI Gradio UI"
      icon_url = "https://avatars.githubusercontent.com/u/51063788?s=48&v=4"
      url = "http://192.168.1.98:7770/"
-
-[[UI.header_links]]
-     name = "Chainlit DeepWiki"
-     display_name = "Chainlit DeepWiki"
-     icon_url = "https://avatars.githubusercontent.com/u/128686189?s=48&v=4"
-     url = "https://deepwiki.com/Chainlit/chainlit"
-
-[[UI.header_links]]
-     name = "Chainlit Docs"
-     display_name = "Chainlit Docs"
-     icon_url = "https://avatars.githubusercontent.com/u/128686189?s=48&v=4"
-     url = "https://docs.chainlit.io/"
 
 [meta]
 generated_by = "2.8.3"

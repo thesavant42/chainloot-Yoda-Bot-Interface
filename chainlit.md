@@ -1,7 +1,3 @@
-<table>
-<tr>
-<td valign="top" width="50%">
-
 ### Homepage
 
 - [https://hackaday.io/project/195655-hacking-seasonal-yoda](https://hackaday.io/project/195655-hacking-seasonal-yoda)
@@ -49,7 +45,3 @@
 ### TTS-WebUI
 
 - [https://github.com/rsxdalv/TTS-WebUI](https://github.com/rsxdalv/TTS-WebUI)
-
-</td>
-</tr>
-</table>

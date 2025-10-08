@@ -6,7 +6,9 @@ Utilizing:
 - Speech Recognition
 - Text To Speech
 - Voice Cloning
-- Tool Usage
+- MCP Tool Usage
+
+![demo](https://github.com/thesavant42/chainloot/blob/main/docs/pics/landingpage.png?raw=true)
 
 [![A preview of the YouTube Short](https://img.youtube.com/vi/jfygCYoRjw8/0.jpg)](https://youtube.com/shorts/jfygCYoRjw8)
 [![A preview of the YouTube Short](https://img.youtube.com/vi/E_Typ3TmwVw/0.jpg)](https://youtube.com/shorts/E_Typ3TmwVw)

@@ -1,7 +1,3 @@
-### Homepage
-
-- [https://hackaday.io/project/195655-hacking-seasonal-yoda](https://hackaday.io/project/195655-hacking-seasonal-yoda)
-
 ### API Docs
 
 - **SwaggerDoc:**
@@ -19,10 +15,6 @@
 
 - [https://docs.chainlit.io/get-started/overview](https://docs.chainlit.io/get-started/overview)
 - [https://deepwiki.com/Chainlit/chainlit](https://deepwiki.com/Chainlit/chainlit)
-
-</td>
-<td valign="top" width="50%"> 
-
 
 ### GitHub 
 

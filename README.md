@@ -38,13 +38,7 @@ Beta Release 0.1 is Live! Check the releases tag, ->
 This release implements Character Profiles, you can hot swap between Yoda, C3PO, and Tony Stark. They each have their own system prompts and voice presets that will persist (I hope).
 
 - Standard edition, Master Yoda
-
-![model_settings](https://github.com/thesavant42/chainloot/blob/main/docs/pics/selected-yoda.png?raw=true)
-
 - C3PO
-
-![model_settings](https://github.com/thesavant42/chainloot/blob/main/docs/pics/selected-3po.png?raw=true)
-
 - Stark
 
 ![model_settings](https://github.com/thesavant42/chainloot/blob/main/docs/pics/selected-stark.png?raw=true)

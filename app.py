@@ -61,6 +61,8 @@ from lib.config_handler import (
     fetch_available_models,
     fetch_available_voices,
 )
+from lib.mcp_server_manager import mcp_manager
+from lib.mcp_tool_processor import tool_processor
 from chainlit.config import (
     ChainlitConfigOverrides,
     FeaturesSettings,
@@ -102,9 +104,27 @@ PROFILE_DEFAULTS = {
 
 async def process_user_input_and_respond(user_text: str):
     """
-    Handles the core logic: gets LLM response, sends text, and generates TTS audio.
+    Handles the core logic: checks for MCP tools first, then gets LLM response, sends text, and generates TTS audio.
     """
-    # 1. Get settings from the user session
+    # 1. Check if the user input requires MCP tools
+    tool_result = None
+    if await tool_processor.should_use_tools(user_text):
+        logger.info(f"MCP tool detected for input: {user_text}")
+        tool_result = await tool_processor.process_with_tools(user_text)
+        
+        if tool_result:
+            # Send the tool result directly
+            character = cl.user_session.get("character")
+            text_msg = await cl.Message(
+                content=tool_result,
+                author=character
+            ).send()
+            
+            # Generate audio for the tool result
+            await generate_audio_response(tool_result, text_msg.id)
+            return  # Exit early, tool handled the request
+
+    # 2. Get settings from the user session for LLM processing
     selected_model = cl.user_session.get("selected_model")
     system_prompt = cl.user_session.get("system_prompt")
     llm_temp = cl.user_session.get("llm_temp")
@@ -113,7 +133,7 @@ async def process_user_input_and_respond(user_text: str):
     if reasoning_enabled:
         system_prompt += " Think step by step before responding."
 
-    # 2. Get LLM response
+    # 3. Get LLM response
     llm_start_time = time.time()
     response = await client.chat.completions.create(
         model=selected_model,
@@ -136,14 +156,21 @@ async def process_user_input_and_respond(user_text: str):
         logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
     scrubbed_response = " ".join([r["processed_chunk"] for r in results])
 
-    # 3. Send text response to the UI
+    # 4. Send text response to the UI
     character = cl.user_session.get("character")
     text_msg = await cl.Message(
         content=scrubbed_response,
         author=character
     ).send()
        
-    # 4. Generate and send audio response
+    # 5. Generate and send audio response
+    await generate_audio_response(scrubbed_response, text_msg.id)
+
+async def generate_audio_response(text: str, message_id: str):
+    """
+    Generate and send TTS audio for a given text.
+    Extracted into separate function for reuse.
+    """
     selected_voice = cl.user_session.get("selected_voice")
     tts_speed = cl.user_session.get("tts_speed")
     tts_exaggeration = cl.user_session.get("tts_exaggeration")
@@ -173,7 +200,7 @@ async def process_user_input_and_respond(user_text: str):
     tts_start_time = time.time()
     audio_buffer = await generate_speech(
         tts_client=tts_client,
-        text=scrubbed_response, # Use the scrubbed response
+        text=text,
         voice=selected_voice,
         tts_model=config.get("tts_model_name"),
         response_format=config.get("tts_response_format"),
@@ -189,7 +216,7 @@ async def process_user_input_and_respond(user_text: str):
         content=audio_buffer,
         mime="audio/wav",
         auto_play=True
-    ).send(for_id=text_msg.id)
+    ).send(for_id=message_id)
 
 ### Auth HANDLING ###
 
@@ -279,63 +306,6 @@ async def on_settings_update(settings):
 def on_stop():
     print("The user stopped the task!")
 
-### MCP HANDLING ###
-
-@cl.on_mcp_connect
-async def on_mcp_connect(connection, session: ClientSession):
-    """Called when an MCP connection is established"""
-    # List available tools
-    result = await session.list_tools()
-    
-    # Process tool metadata
-    tools = [{
-        "name": t.name,
-        "description": t.description,
-        "input_schema": t.inputSchema,
-    } for t in result.tools]
-    
-    # Store tools for later use
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-    mcp_tools[connection.name] = tools
-    cl.user_session.set("mcp_tools", mcp_tools)
-
-@cl.on_mcp_disconnect
-async def on_mcp_disconnect(name: str, session: ClientSession):
-    """Called when an MCP connection is terminated"""
-    # Your cleanup code here
-    if name in mcp_tools_cache:
-        del mcp_tools_cache[name]
-
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-    if name in mcp_tools:
-        del mcp_tools[name]
-        cl.user_session.set("mcp_tools", mcp_tools)
-
-    await cl.Message(f"Disconnected from MCP server: {name}").send()
-
-@cl.step(type="tool")
-async def execute_tool(tool_name: str, tool_input: Dict[str, Any]):
-    print("Executing tool:", tool_name)
-    print("Tool input:", tool_input)
-    mcp_name = None
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-
-    for conn_name, tools in mcp_tools.items():
-        if any(tool["name"] == tool_name for tool in tools):
-            mcp_name = conn_name
-            break
-
-    if not mcp_name:
-        return {"error": f"Tool '{tool_name}' not found in any connected MCP server"}
-
-    mcp_session, _ = cl.context.session.mcp_sessions.get(mcp_name)
-
-    try:
-        result = await mcp_session.call_tool(tool_name, tool_input)
-        return result
-    except Exception as e:
-        return {"error": f"Error calling tool '{tool_name}': {str(e)}"}
-
 ### Chat Profile Functions ###
 
 @cl.set_chat_profiles
@@ -365,6 +335,15 @@ async def chat_profile():
 @cl.on_chat_start
 async def on_chat_start():
     print("A new chat session has started!")
+    
+    # Initialize server-side MCP tools
+    try:
+        await mcp_manager.initialize()
+        logger.info("Server-side MCP tools initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize MCP tools: {e}")
+        # Don't fail the chat start, just log the error
+    
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:
         raise RuntimeError("chat_profile is not set. Select a profile before starting the chat.")
@@ -457,6 +436,14 @@ async def on_chat_start():
 @cl.on_chat_end
 async def on_chat_end():
     print("The user disconnected!")
+    
+    # Clean up MCP resources if this is the last session
+    try:
+        # Note: We don't close MCP sessions on each chat end since they're shared server-side
+        # MCP sessions will be cleaned up when the server shuts down
+        logger.info("Chat session ended")
+    except Exception as e:
+        logger.error(f"Error during chat end cleanup: {e}")
 
 @cl.on_message
 async def on_message(message: cl.Message):

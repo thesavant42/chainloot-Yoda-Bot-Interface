@@ -8,3 +8,4 @@ transformers
 asyncpg
 beautifulsoup4
 mcp-server-time
+python-dateutil

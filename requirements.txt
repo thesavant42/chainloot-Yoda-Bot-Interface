@@ -6,5 +6,5 @@ openai
 torch
 transformers
 asyncpg
-aiosqlite
-aiosqlite
+beautifulsoup4
+mcp-server-time

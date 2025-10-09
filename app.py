@@ -1,10 +1,46 @@
 # app.py
+
+# CRITICAL: This must be the very first thing that happens
+# Apply S3 client fix before ANY other imports
+print("Applying S3StorageClient fix...")
+
+# Import our custom storage client
+from lib.custom_s3_storage import FixedS3StorageClient
+
+# More aggressive monkey patching approach
+import sys
+
+# Clear any cached modules related to chainlit storage
+modules_to_clear = [k for k in sys.modules.keys() if 'chainlit.data.storage' in k]
+for module in modules_to_clear:
+    del sys.modules[module]
+
+# Patch the module at import time
+def patch_s3_storage():
+    """Apply the patch when the module is imported"""
+    try:
+        import chainlit.data.storage_clients.s3 as s3_module
+        # Replace the class
+        original_class = s3_module.S3StorageClient
+        s3_module.S3StorageClient = FixedS3StorageClient
+        print(f"Successfully patched S3StorageClient: {original_class} -> {FixedS3StorageClient}")
+        return True
+    except Exception as e:
+        print(f"Failed to patch S3StorageClient: {e}")
+        return False
+
+# Apply the patch immediately
+patch_success = patch_s3_storage()
+if not patch_success:
+    print("Patch failed, but continuing...")
+
+print("S3StorageClient patch applied, proceeding with imports...")
+
 import chainlit as cl
 from mcp import ClientSession
 from chainlit.logger import logger
 import time
 from chainlit.input_widget import Select, Slider, Switch
-from chainlit.data.storage_clients.s3 import S3StorageClient
 import json
 import os
 from lib.message_processor import process_message_for_tts
@@ -31,7 +67,6 @@ from chainlit.config import (
     McpFeature,
     UISettings,
 )
-storage_client = S3StorageClient(bucket="my-bucket")
 config_path = "config.json"
 mcp_tools_cache = {}
 starters = [

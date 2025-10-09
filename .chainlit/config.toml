@@ -4,7 +4,7 @@ user_env = []
 session_timeout = 3600  # in seconds
 user_session_timeout = 1296000  # 15 days
 # Enable third parties caching (e.g., LangChain cache)
-cache = true
+cache = false
 # Whether to persist user environment variables (API keys) to the database
 # Set to true to store user env vars in DB, false to exclude them for security
 persist_user_env = true
@@ -60,9 +60,10 @@ allow_thread_sharing = false
     allowed_executables = [ "npx", "uvx" ]
 
 [UI]
-name = "AI"
+name = "Assistant"
 default_theme = "dark"
-layout = "wide"
+#layout = "wide"
+layout = "default"
 description = "Yoda Robot"
 default_sidebar_state = "closed"
 cot = "full" # Can be "hidden", "tool_call" or "full".
@@ -75,7 +76,8 @@ custom_css = '/public/globals.css'
 # custom_js = "/public/test.js"
 
 # The style of alert boxes. Can be "classic" or "modern".
-alert_style = "modern"
+alert_style = "classic"
+# alert_style = "modern"
 
 # Specify additional attributes for custom JS file
 # custom_js_attributes = "async type = \"module\""

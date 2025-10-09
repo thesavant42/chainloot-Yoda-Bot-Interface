@@ -27,6 +27,13 @@ class MCPServerManager:
         try:
             await self._setup_time_server()
             await self._setup_brave_search_server()
+            await self._setup_fetch_server()
+            await self._setup_git_server()
+            await self._setup_memory_server()
+            await self._setup_sequential_thinking_server()
+            await self._setup_youtube_transcript_server()
+            await self._setup_wikipedia_server()
+            # Note: Hugging Face server uses HTTP transport, will implement separately
             
             self.initialized = True
             logging.info(f"MCP initialization complete. Available tools: {list(self.tools.keys())}")
@@ -113,6 +120,199 @@ class MCPServerManager:
         except Exception as e:
             logging.error(f"Failed to setup Brave Search server: {e}")
             raise
+    
+    async def _setup_fetch_server(self):
+        """Setup the fetch server for web content retrieval"""
+        try:
+            server_params = StdioServerParameters(
+                command="uvx",
+                args=["mcp-server-fetch"]
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['fetch'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["fetch"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "fetch",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Fetch server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup fetch server: {e}")
+            # Don't raise - continue with other servers
+    
+    async def _setup_git_server(self):
+        """Setup the git server for repository operations"""
+        try:
+            server_params = StdioServerParameters(
+                command="uvx",
+                args=["mcp-server-git"]
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['git'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["git"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "git",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Git server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup git server: {e}")
+            # Don't raise - continue with other servers
+    
+    async def _setup_memory_server(self):
+        """Setup the memory server for persistent conversation memory"""
+        try:
+            server_params = StdioServerParameters(
+                command="npx",
+                args=["-y", "@modelcontextprotocol/server-memory"],
+                env={"MEMORY_FILE_PATH": "memory.json"}
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['memory'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["memory"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "memory",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Memory server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup memory server: {e}")
+            # Don't raise - continue with other servers
+    
+    async def _setup_sequential_thinking_server(self):
+        """Setup the sequential thinking server for step-by-step reasoning"""
+        try:
+            server_params = StdioServerParameters(
+                command="npx",
+                args=["-y", "@modelcontextprotocol/server-sequential-thinking"]
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['sequential_thinking'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["sequential_thinking"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "sequential_thinking",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Sequential thinking server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup sequential thinking server: {e}")
+            # Don't raise - continue with other servers
+    
+    async def _setup_youtube_transcript_server(self):
+        """Setup the YouTube transcript server for video transcript extraction"""
+        try:
+            server_params = StdioServerParameters(
+                command="npx",
+                args=["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"]
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['youtube_transcript'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["youtube_transcript"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "youtube_transcript",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"YouTube transcript server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup YouTube transcript server: {e}")
+            # Don't raise - continue with other servers
+    
+    async def _setup_wikipedia_server(self):
+        """Setup the Wikipedia server for encyclopedia lookup"""
+        try:
+            server_params = StdioServerParameters(
+                command="wikipedia-mcp",
+                args=[]
+            )
+            
+            stdio_context = stdio_client(server_params)
+            read, write = await stdio_context.__aenter__()
+            self.session_contexts['wikipedia'] = stdio_context
+            
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            tool_list = await session.list_tools()
+            self.sessions["wikipedia"] = session
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": "wikipedia",
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Wikipedia server initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup Wikipedia server: {e}")
+            # Don't raise - continue with other servers
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         """Call a specific tool"""

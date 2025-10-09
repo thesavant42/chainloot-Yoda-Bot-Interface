@@ -1,0 +1,15 @@
+{
+  "workspace": {
+    "root": "C:/Users/jbras/Desktop/chainloot/public/",
+    "uuid": "chainloot"
+  },
+  "deployment": {
+    "url": "http://localhost:8000/",
+    "pathMappings": [
+      {
+        "url": "/",
+        "path": "C:/Users/jbras/Desktop/chainloot/public/"
+      }
+    ]
+  }
+}

@@ -6,6 +6,15 @@ import string
 from typing import Dict, Any, Optional, Tuple
 from dateutil import parser
 from lib.mcp_server_manager import mcp_manager
+import os
+
+def get_active_mcp_manager():
+    """Get the active MCP manager (dynamic if config exists, otherwise legacy)"""
+    if os.path.exists("mcp_servers.json"):
+        from lib.dynamic_mcp_manager import dynamic_mcp_manager
+        return dynamic_mcp_manager
+    else:
+        return mcp_manager
 from chainlit.logger import logger
 
 class MCPToolProcessor:
@@ -33,7 +42,8 @@ class MCPToolProcessor:
     
     async def should_use_tools(self, message: str) -> bool:
         """Determine if the message requires tool usage"""
-        await mcp_manager.initialize()
+        active_manager = get_active_mcp_manager()
+        await active_manager.initialize()
         
         message_lower = message.lower()
         
@@ -184,7 +194,7 @@ class MCPToolProcessor:
         Process a message using appropriate MCP tools and return the result.
         Returns None if no tools were used.
         """
-        await mcp_manager.initialize()
+        await get_active_mcp_manager().initialize()
         
         message_lower = message.lower()
         
@@ -234,7 +244,7 @@ class MCPToolProcessor:
     
     async def _handle_time_query(self, message: str) -> Optional[str]:
         """Handle time-related queries"""
-        time_tool = mcp_manager.find_tool_by_capability("time")
+        time_tool = get_active_mcp_manager().find_tool_by_capability("time")
         if not time_tool:
             return " Sorry, time tools are not available right now."
         
@@ -244,7 +254,7 @@ class MCPToolProcessor:
             tool_params = {"timezone": timezone} if timezone else {}
             
             logger.info(f"Calling time tool with params: {tool_params}")
-            result = await mcp_manager.call_tool(time_tool, tool_params)
+            result = await get_active_mcp_manager().call_tool(time_tool, tool_params)
             
             # Parse the result
             if (result and result.content and len(result.content) > 0 
@@ -274,7 +284,7 @@ class MCPToolProcessor:
     
     async def _handle_search_query(self, message: str) -> Optional[str]:
         """Handle search-related queries"""
-        search_tool = mcp_manager.find_tool_by_capability("search")
+        search_tool = get_active_mcp_manager().find_tool_by_capability("search")
         if not search_tool:
             return "Sorry, search tools are not available right now."
         
@@ -285,7 +295,7 @@ class MCPToolProcessor:
                 return "I'm not sure what you want me to search for. Please be more specific."
             
             logger.info(f"Calling search tool with query: {query}")
-            result = await mcp_manager.call_tool(search_tool, {"query": query})
+            result = await get_active_mcp_manager().call_tool(search_tool, {"query": query})
             
             # Parse and format the result
             if (result and result.content and len(result.content) > 0 
@@ -304,7 +314,7 @@ class MCPToolProcessor:
     
     async def _handle_fetch_query(self, message: str) -> Optional[str]:
         """Handle fetch/web content queries"""
-        fetch_tool = mcp_manager.find_tool_by_capability("fetch")
+        fetch_tool = get_active_mcp_manager().find_tool_by_capability("fetch")
         if not fetch_tool:
             return "Sorry, fetch tools are not available right now."
         
@@ -315,7 +325,7 @@ class MCPToolProcessor:
                 return "I need a URL to fetch content from. Please provide a valid URL."
             
             logger.info(f"Calling fetch tool with URL: {url}")
-            result = await mcp_manager.call_tool(fetch_tool, {"url": url})
+            result = await get_active_mcp_manager().call_tool(fetch_tool, {"url": url})
             
             if (result and result.content and len(result.content) > 0 
                 and hasattr(result.content[0], "text") and result.content[0].text):
@@ -335,7 +345,7 @@ class MCPToolProcessor:
     
     async def _handle_git_query(self, message: str) -> Optional[str]:
         """Handle git-related queries"""
-        git_tool = mcp_manager.find_tool_by_capability("git")
+        git_tool = get_active_mcp_manager().find_tool_by_capability("git")
         if not git_tool:
             return "Sorry, git tools are not available right now."
         
@@ -346,7 +356,7 @@ class MCPToolProcessor:
                 return "I'm not sure which git operation you want to perform."
             
             logger.info(f"Calling git tool with operation: {operation}")
-            result = await mcp_manager.call_tool(git_tool, operation)
+            result = await get_active_mcp_manager().call_tool(git_tool, operation)
             
             if (result and result.content and len(result.content) > 0 
                 and hasattr(result.content[0], "text") and result.content[0].text):
@@ -361,7 +371,7 @@ class MCPToolProcessor:
     
     async def _handle_memory_query(self, message: str) -> Optional[str]:
         """Handle memory-related queries"""
-        memory_tool = mcp_manager.find_tool_by_capability("memory")
+        memory_tool = get_active_mcp_manager().find_tool_by_capability("memory")
         if not memory_tool:
             return "Sorry, memory tools are not available right now."
         
@@ -374,14 +384,14 @@ class MCPToolProcessor:
                     return "I need content to save to memory."
                 
                 logger.info(f"Saving to memory: {content}")
-                result = await mcp_manager.call_tool(memory_tool, {"action": "save", "content": content})
+                result = await get_active_mcp_manager().call_tool(memory_tool, {"action": "save", "content": content})
                 return "I've saved that to memory."
                 
             else:
                 # Recall from memory
                 query = self._extract_memory_query(message)
                 logger.info(f"Recalling from memory: {query}")
-                result = await mcp_manager.call_tool(memory_tool, {"action": "recall", "query": query or ""})
+                result = await get_active_mcp_manager().call_tool(memory_tool, {"action": "recall", "query": query or ""})
                 
                 if (result and result.content and len(result.content) > 0 
                     and hasattr(result.content[0], "text") and result.content[0].text):
@@ -396,7 +406,7 @@ class MCPToolProcessor:
     
     async def _handle_youtube_query(self, message: str) -> Optional[str]:
         """Handle YouTube transcript queries"""
-        youtube_tool = mcp_manager.find_tool_by_capability("transcript")
+        youtube_tool = get_active_mcp_manager().find_tool_by_capability("transcript")
         if not youtube_tool:
             return "Sorry, YouTube transcript tools are not available right now."
         
@@ -407,7 +417,7 @@ class MCPToolProcessor:
                 return "I need a YouTube URL to get the transcript. Please provide a valid YouTube link."
             
             logger.info(f"Getting YouTube transcript for: {url}")
-            result = await mcp_manager.call_tool(youtube_tool, {"url": url})
+            result = await get_active_mcp_manager().call_tool(youtube_tool, {"url": url})
             
             if (result and result.content and len(result.content) > 0 
                 and hasattr(result.content[0], "text") and result.content[0].text):
@@ -427,7 +437,7 @@ class MCPToolProcessor:
     
     async def _handle_wikipedia_query(self, message: str) -> Optional[str]:
         """Handle Wikipedia queries"""
-        wikipedia_tool = mcp_manager.find_tool_by_capability("wikipedia")
+        wikipedia_tool = get_active_mcp_manager().find_tool_by_capability("wikipedia")
         if not wikipedia_tool:
             return "Sorry, Wikipedia tools are not available right now."
         
@@ -438,7 +448,7 @@ class MCPToolProcessor:
                 return "I need a topic to search for on Wikipedia."
             
             logger.info(f"Searching Wikipedia for: {query}")
-            result = await mcp_manager.call_tool(wikipedia_tool, {"query": query})
+            result = await get_active_mcp_manager().call_tool(wikipedia_tool, {"query": query})
             
             if (result and result.content and len(result.content) > 0 
                 and hasattr(result.content[0], "text") and result.content[0].text):

@@ -40,6 +40,7 @@ import chainlit as cl
 from mcp import ClientSession
 from chainlit.logger import logger
 import time
+import asyncio
 from chainlit.input_widget import Select, Slider, Switch
 import json
 import os
@@ -62,6 +63,7 @@ from lib.config_handler import (
     fetch_available_voices,
 )
 from lib.mcp_server_manager import mcp_manager
+from lib.dynamic_mcp_manager import dynamic_mcp_manager
 from lib.mcp_tool_processor import tool_processor
 from chainlit.config import (
     ChainlitConfigOverrides,
@@ -71,6 +73,39 @@ from chainlit.config import (
 )
 config_path = "config.json"
 mcp_tools_cache = {}
+
+def get_active_mcp_manager():
+    """Get the active MCP manager (dynamic if config exists, otherwise legacy)"""
+    if os.path.exists("mcp_servers.json"):
+        return dynamic_mcp_manager
+    else:
+        return mcp_manager
+
+# Pre-initialize MCP servers on app startup (before any browser connections)
+async def initialize_mcp_on_startup():
+    """Initialize MCP servers when the app starts, before users connect"""
+    try:
+        print("Pre-initializing MCP servers for optimal user experience...")
+        
+        # Check if dynamic configuration exists
+        if os.path.exists("mcp_servers.json"):
+            print("Using dynamic MCP configuration (mcp_servers.json)")
+            await dynamic_mcp_manager.initialize()
+            tool_count = len(dynamic_mcp_manager.get_available_tools())
+            print(f"Dynamic MCP initialization complete! {tool_count} tools ready.")
+        else:
+            print("Using legacy MCP configuration (hardcoded)")
+            await mcp_manager.initialize()
+            tool_count = len(mcp_manager.get_available_tools())
+            print(f"Legacy MCP initialization complete! {tool_count} tools ready.")
+            
+    except Exception as e:
+        print(f"MCP pre-initialization failed: {e}")
+        print("Users can still chat, but advanced tools may not be available.")
+
+# Note: Removed background thread initialization to avoid event loop conflicts
+# MCP will now initialize on first chat session instead
+
 starters = [
     cl.Starter(
         label="Say hi",
@@ -108,21 +143,27 @@ async def process_user_input_and_respond(user_text: str):
     """
     # 1. Check if the user input requires MCP tools
     tool_result = None
+    active_manager = get_active_mcp_manager()
+    
     if await tool_processor.should_use_tools(user_text):
-        logger.info(f"MCP tool detected for input: {user_text}")
-        tool_result = await tool_processor.process_with_tools(user_text)
-        
-        if tool_result:
-            # Send the tool result directly
-            character = cl.user_session.get("character")
-            text_msg = await cl.Message(
-                content=tool_result,
-                author=character
-            ).send()
+        if active_manager.initialized:
+            logger.info(f"MCP tool detected for input: {user_text}")
+            tool_result = await tool_processor.process_with_tools(user_text)
             
-            # Generate audio for the tool result
-            await generate_audio_response(tool_result, text_msg.id)
-            return  # Exit early, tool handled the request
+            if tool_result:
+                # Send the tool result directly
+                character = cl.user_session.get("character")
+                text_msg = await cl.Message(
+                    content=tool_result,
+                    author=character
+                ).send()
+                
+                # Generate audio for the tool result
+                await generate_audio_response(tool_result, text_msg.id)
+                return  # Exit early, tool handled the request
+        else:
+            # MCP tools not ready yet, log and fall back to LLM silently
+            logger.info(f"MCP tools requested but not ready yet, falling back to LLM for: {user_text}")
 
     # 2. Get settings from the user session for LLM processing
     selected_model = cl.user_session.get("selected_model")
@@ -336,13 +377,23 @@ async def chat_profile():
 async def on_chat_start():
     print("A new chat session has started!")
     
-    # Initialize server-side MCP tools
-    try:
-        await mcp_manager.initialize()
-        logger.info("Server-side MCP tools initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize MCP tools: {e}")
-        # Don't fail the chat start, just log the error
+    # Initialize MCP in the main event loop to avoid "Event loop is closed" errors
+    active_manager = get_active_mcp_manager()
+    if not active_manager.initialized:
+        try:
+            print("Initializing MCP servers in main event loop...")
+            await initialize_mcp_on_startup()
+        except Exception as e:
+            logger.error(f"Failed to initialize MCP servers: {e}")
+    
+    # Log MCP initialization status to console only
+    if active_manager.initialized:
+        tool_count = len(active_manager.get_available_tools())
+        manager_type = "Dynamic" if active_manager == dynamic_mcp_manager else "Legacy"
+        logger.info(f"{manager_type} MCP servers ready - {tool_count} tools available")
+    else:
+        logger.info("MCP servers not yet initialized - basic chat ready")
+    
     
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:
@@ -490,3 +541,28 @@ async def on_audio_end():
     except Exception as e:
         logger.error(f"AUDIO DIAG: Error in on_audio_end: {str(e)}")
         await cl.Message(content=f"Error processing audio: {str(e)}").send()
+
+# Add cleanup on app shutdown
+import atexit
+import signal
+
+async def cleanup_on_exit():
+    """Clean up MCP resources on app shutdown"""
+    try:
+        active_manager = get_active_mcp_manager()
+        await active_manager.cleanup()
+        logger.info("MCP resources cleaned up successfully")
+    except Exception as e:
+        logger.error(f"Error cleaning up MCP resources: {e}")
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(cleanup_on_exit())
+    loop.close()
+
+# Register cleanup handlers
+atexit.register(lambda: asyncio.run(cleanup_on_exit()))
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)

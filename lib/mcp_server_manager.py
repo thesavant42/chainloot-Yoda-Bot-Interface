@@ -18,29 +18,44 @@ class MCPServerManager:
         self.tools: Dict[str, Dict[str, Any]] = {}  # tool_name -> {session_name, description, schema}
         self.initialized = False
         self.session_contexts: Dict[str, Any] = {}  # Store context managers
+        self._initialization_lock = asyncio.Lock()  # Prevent concurrent initialization
+        self._initializing = False  # Track if initialization is in progress
     
     async def initialize(self):
-        """Initialize all MCP servers"""
-        if self.initialized:
-            return
+        """Initialize all MCP servers (singleton pattern with proper async locking)"""
+        async with self._initialization_lock:
+            if self.initialized:
+                logging.info("MCP servers already initialized, skipping...")
+                return
+                
+            if self._initializing:
+                logging.info("MCP initialization already in progress, waiting...")
+                return
+                
+            self._initializing = True
             
-        try:
-            await self._setup_time_server()
-            await self._setup_brave_search_server()
-            await self._setup_fetch_server()
-            await self._setup_git_server()
-            await self._setup_memory_server()
-            await self._setup_sequential_thinking_server()
-            await self._setup_youtube_transcript_server()
-            await self._setup_wikipedia_server()
-            # Note: Hugging Face server uses HTTP transport, will implement separately
-            
-            self.initialized = True
-            logging.info(f"MCP initialization complete. Available tools: {list(self.tools.keys())}")
-            
-        except Exception as e:
-            logging.error(f"Failed to initialize MCP servers: {e}")
-            raise
+            try:
+                logging.info("Starting MCP server initialization...")
+                await self._setup_time_server()
+                await self._setup_brave_search_server()
+                await self._setup_fetch_server()
+                await self._setup_git_server()
+                await self._setup_memory_server()
+                await self._setup_sequential_thinking_server()
+                await self._setup_youtube_transcript_server()
+                await self._setup_wikipedia_server()
+                # Note: Hugging Face server uses HTTP transport, will implement separately
+                
+                self.initialized = True
+                logging.info(f"MCP initialization complete. Available tools: {list(self.tools.keys())}")
+                
+            except Exception as e:
+                logging.error(f"Failed to initialize MCP servers: {e}")
+                # Clean up partial initialization
+                await self.cleanup()
+                raise
+            finally:
+                self._initializing = False
     
     async def _setup_time_server(self):
         """Setup the time server using proper stdio_client"""
@@ -50,7 +65,7 @@ class MCPServerManager:
                 args=["mcp-server-time"]
             )
             
-            # Use stdio_client context manager
+            # Use stdio_client as async context manager
             stdio_context = stdio_client(server_params)
             read, write = await stdio_context.__aenter__()
             
@@ -60,13 +75,15 @@ class MCPServerManager:
             # Create session with proper streams
             session = ClientSession(read, write)
             await session.__aenter__()
+            
+            # Store session for cleanup
+            self.sessions["time"] = session
+            
+            # Initialize after storing (prevents partial cleanup issues)
             await session.initialize()
             
             # List available tools
             tool_list = await session.list_tools()
-            
-            # Store session and tools
-            self.sessions["time"] = session
             
             for tool in tool_list.tools:
                 self.tools[tool.name] = {
@@ -79,6 +96,19 @@ class MCPServerManager:
             
         except Exception as e:
             logging.error(f"Failed to setup time server: {e}")
+            # Clean up partially created resources
+            if 'time' in self.session_contexts:
+                try:
+                    await self.session_contexts['time'].__aexit__(None, None, None)
+                    del self.session_contexts['time']
+                except:
+                    pass
+            if 'time' in self.sessions:
+                try:
+                    await self.sessions['time'].__aexit__(None, None, None)
+                    del self.sessions['time']
+                except:
+                    pass
             raise
     
     async def _setup_brave_search_server(self):

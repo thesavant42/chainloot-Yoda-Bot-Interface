@@ -54,6 +54,6 @@ if __name__ == "__main__":
     success = asyncio.run(test_s3_client())
     
     if success:
-        print("\n✅ Test completed successfully!")
+        print("\nTest completed successfully!")
     else:
         print("\n❌ Test failed!")

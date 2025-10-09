@@ -8,4 +8,7 @@ transformers
 asyncpg
 beautifulsoup4
 mcp-server-time
+mcp-server-fetch
+mcp-server-git
+wikipedia-mcp
 python-dateutil

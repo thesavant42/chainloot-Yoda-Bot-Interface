@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "home-assistant": {
+      "env": {
+        "SSE_URL": "http://homeassistant.local:8123/mcp_server/sse",
+        "API_ACCESS_TOKEN": "${HOME_ASSISTANT_TOKEN}"
+      }
+    },
+    "hf-mcp-server": {
+      "env": {
+        "SSE_URL": "https://huggingface.co/mcp",
+        "API_ACCESS_TOKEN": "${HUGGING_FACE_API}"
+      }
+    },
+    "context7": {
+      "env": {
+        "SSE_URL": "https://mcp.context7.com/mcp"
+      }
+    }
+  }
+}

@@ -23,6 +23,14 @@ class MCPToolProcessor:
     """
     
     def __init__(self):
+        # Default user location information
+        self.default_location = {
+            "zip_code": "91327",
+            "city": "Newbury Park",
+            "state": "CA",
+            "timezone": "America/Los_Angeles"
+        }
+        
         self.timezone_map = {
             "london": "Europe/London",
             "paris": "Europe/Paris", 
@@ -189,6 +197,43 @@ class MCPToolProcessor:
         
         return any(indicator in message for indicator in wikipedia_indicators)
     
+    def _get_ordinal_suffix(self, day: int) -> str:
+        """Get ordinal suffix for day (1st, 2nd, 3rd, 4th, etc.)"""
+        if 10 <= day % 100 <= 20:  # Special case for 11th, 12th, 13th
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+        return suffix
+    
+    def _get_friendly_location_name(self, display_name: str, timezone: str) -> str:
+        """Convert timezone/display name to friendly location for TTS"""
+        if display_name and display_name not in ["utc", "gmt"]:
+            return display_name
+        
+        # Convert common timezone names to friendly versions
+        timezone_map = {
+            "America/Los_Angeles": "Los Angeles",
+            "America/New_York": "New York", 
+            "America/Chicago": "Chicago",
+            "America/Denver": "Denver",
+            "Europe/London": "London",
+            "UTC": "UTC",
+            "GMT": "GMT"
+        }
+        
+        return timezone_map.get(timezone, timezone or "your location")
+    
+    def get_user_location(self, format_type="full") -> dict:
+        """Get user's default location in various formats"""
+        if format_type == "zip":
+            return self.default_location["zip_code"]
+        elif format_type == "city_state":
+            return f"{self.default_location['city']}, {self.default_location['state']}"
+        elif format_type == "timezone":
+            return self.default_location["timezone"]
+        else:  # full
+            return f"{self.default_location['city']}, {self.default_location['state']} {self.default_location['zip_code']}"
+    
     async def process_with_tools(self, message: str) -> Optional[str]:
         """
         Process a message using appropriate MCP tools and return the result.
@@ -249,8 +294,14 @@ class MCPToolProcessor:
             return " Sorry, time tools are not available right now."
         
         try:
-            # Parse timezone from message
+            # Parse timezone from message, default to Newbury Park, CA if none specified
             timezone, display_name = self._parse_timezone_from_message(message)
+            
+            # If no timezone specified, default to Newbury Park, CA (91327)
+            if not timezone:
+                timezone = "America/Los_Angeles"
+                display_name = "Newbury Park, CA"
+            
             tool_params = {"timezone": timezone} if timezone else {}
             
             logger.info(f"Calling time tool with params: {tool_params}")
@@ -268,11 +319,18 @@ class MCPToolProcessor:
                     
                     if "datetime" in parsed_result:
                         dt_object = parser.isoparse(parsed_result["datetime"])
-                        formatted_time = dt_object.strftime("%A, %B %d, %Y at %I:%M %p")
-                        response_timezone = parsed_result.get("timezone", display_name or "local time")
                         
-                        return f" The current time in **{response_timezone}** is **{formatted_time}**."
-                    
+                        # Format for TTS-friendly output
+                        day_name = dt_object.strftime("%A")
+                        month_day = dt_object.strftime("%B %d").replace(" 0", " ")  # Remove leading zero
+                        day_ordinal = self._get_ordinal_suffix(dt_object.day)
+                        time_12hr = dt_object.strftime("%I:%M %p").lstrip("0")  # Remove leading zero from hour
+                        
+                        # Convert timezone to friendly name
+                        friendly_location = self._get_friendly_location_name(display_name, parsed_result.get("timezone"))
+                        
+                        return f" Today is {day_name}, {month_day}{day_ordinal}. The current time in {friendly_location} is {time_12hr}."
+                        
                 except json.JSONDecodeError:
                     pass
             

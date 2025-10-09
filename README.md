@@ -33,7 +33,27 @@ The goal is to unify and simplify the architecture required to run the robot. Th
 - [ ] Should support multi-modal functionality, for image recognition and tool usage
 
 ## Status
+
+**10-08-2025**
+
+- Fixed async issue with localstack s3
+- Server side MCP!
+
+### Complete MCP Server Catalog
+
+- 1. Time Server (mcp-server-time)
+- 2. Brave Search Server (@brave/brave-search-mcp-server)
+- 3. Fetch Server (mcp-server-fetch)
+- 4. Git Server (mcp-server-git)
+- 5. Memory Server (@modelcontextprotocol/server-memory)
+- 6-. Sequential Thinking Server (@modelcontextprotocol/server-sequential-thinking)
+- 7. YouTube Transcript Server (@kimtaeyoon83/mcp-server-youtube-transcript)
+- 8. Wikipedia Server (wikipedia-mcp)
+
+See the full readme for mcp docs\serverside-mcp-features.md
+
 **10-06-2025 **
+
 Beta Release 0.1 is Live! Check the releases tag, ->
 This release implements Character Profiles, you can hot swap between Yoda, C3PO, and Tony Stark. They each have their own system prompts and voice presets that will persist (I hope).
 

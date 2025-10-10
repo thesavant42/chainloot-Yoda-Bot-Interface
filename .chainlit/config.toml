@@ -114,17 +114,5 @@ custom_meta_url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
      icon_url = "https://avatars.githubusercontent.com/u/11545906?s=48&v=4"
      url = "https://github.com/thesavant42/chainloot-Yoda-Bot-Interface"
 
-[[UI.header_links]]
-     name = "TTS WebUI React UI"
-     display_name = "TTS WebUI React UI"
-     icon_url = "https://avatars.githubusercontent.com/u/69631?s=48&v=4"
-     url = "http://192.168.1.98:3000/"
-
-[[UI.header_links]]
-     name = "TTS WebUI Gradio UI"
-     display_name = "TTS WebUI Gradio UI"
-     icon_url = "https://avatars.githubusercontent.com/u/51063788?s=48&v=4"
-     url = "http://192.168.1.98:7770/"
-
 [meta]
 generated_by = "2.8.3"

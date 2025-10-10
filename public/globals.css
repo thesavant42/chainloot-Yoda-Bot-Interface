@@ -5,7 +5,6 @@
     border-bottom-right-radius: 0 !important;
     border-bottom-left-radius: 0 !important;
 }
-
 audio::-webkit-media-controls-enclosure {
     border-radius: 0px;
     background-color: hsl(var(--accent));
@@ -13,7 +12,6 @@ audio::-webkit-media-controls-enclosure {
     text-shadow: light-dark(rgb(255, 255, 255), rgb(59, 59, 59)) 0px 0px 10px;
 
 }
-
 audio::-webkit-media-controls-time-remaining-display{
     opacity: 0.87;
     font-family: Roboto-Regular, Roboto, sans-serif;
@@ -29,30 +27,112 @@ audio::-webkit-media-controls-current-time-display {
     text-shadow: light-dark(rgb(255, 255, 255), rgb(59, 59, 59)) 0px 0px 10px;
 }
 
-audio::-webkit-media-controls-play-button {
-    color: light-dark(rgb(59, 59, 59), rgb(255, 255, 255));
+audio::-webkit-media-controls-play-pause-button {
+  background-color: white !important;
+  color: light-dark(rgb(255, 255, 255), rgb(59, 59, 59));
 }
 
-audio::-internal-media-controls-overflow-button {
-    color: light-dark(rgb(59, 59, 59), rgb(255, 255, 255));
+audio::-webkit-media-controls-panel { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-mute-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-play-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-timeline-container { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-current-time-display { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-time-remaining-display { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-timeline { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-volume-slider-container { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-volume-slider { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-seek-back-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-seek-forward-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-fullscreen-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-rewind-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-return-to-realtime-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-toggle-closed-captions-button { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-volume-slider::-webkit-slider-thumb { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-timeline::-webkit-slider-thumb { color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important; }
+audio::-webkit-media-controls-mute-button               { filter: invert(1) !important; }
+audio::-webkit-media-controls-play-button               { filter: invert(1) !important; }
+audio::-webkit-media-controls-seek-back-button          { filter: invert(1) !important; }
+audio::-webkit-media-controls-seek-forward-button       { filter: invert(1) !important; }
+audio::-webkit-media-controls-rewind-button            { filter: invert(1) !important; }
+audio::-webkit-media-controls-fullscreen-button         { filter: invert(1) !important; }
+audio::-webkit-media-controls-toggle-closed-captions-button { filter: invert(1) !important; }
+/* --------------- OVERFLOW (⋮) MENU BUTTON --------------- */
+audio::-webkit-media-controls-overflow-button {
+    color:          light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    background:     light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    border-radius:  50% !important;
+    padding:        4px !important;   /* makes the hit‑area a bit larger */
+    filter:         none !important;  /* clear any previous invert() filter */
 }
 
-input[type="range" i] {
-    color: light-dark(rgb(59, 59, 59), rgb(255, 255, 255));
+/* If the SVG inside the button stubbornly stays dark, invert it */
+audio::-webkit-media-controls-overflow-button svg {
+    filter: invert(1) !important;
+}
+/* --------------------------------------------------------------
+   Force the remaining internal WebKit audio‑control parts to use
+   the light‑dark colour you defined for the rest of the UI.
+   ---------------------------------------------------------------- */
+
+/* 1️⃣  Timeline (the bar that you drag) */
+audio::-webkit-media-controls-timeline,
+audio::-internal-media-controls-timeline {
+    /* make the *track* itself use the light‑dark colour */
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
 }
 
-audio::-webkit-media-controls-timeline {
-    opacity: 1;
+/* 2️⃣  Segmented track (the “filled‑in” portion of the timeline) */
+audio::-internal-media-controls-segmented-track,
+audio::-internal-track-segment-background,
+audio::-internal-track-segment-highlight-before,
+audio::-internal-track-segment-highlight-after {
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
 }
 
-audio::-webkit-media-controls-mute-button {
-    background-image: light-dark(url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3dUZXh0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxwYXRoIGQ9Ik0zIDl2Nmg0bDUgNVY0TDcgOUgzem0xMy41IDNjMC0xLjc3LTEuMDItMy4yOS0yLjUtNC4wM3Y4LjA1YzEuNDgtLjczIDIuNS0yLjI1IDIuNS00LjAyek0xNCAzLjIzdjIuMDZjMi44OS44NiA1IDMuNTQgNSA2Ljcxcy0yLjExIDUuODUtNSA2LjcxdjIuMDZjNC4wMS0uOTEgNy00LjQ5IDctOC43N3MtMi45OS03Ljg2LTctOC43N3oiLz4KICAgIDxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz4KPC9zdmc+), url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3ciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTMgOXY2aDRsNSA1VjRMNyA5SDN6bTEzLjUgM2MwLTEuNzctMS4wMi0zLjI5LTIuNS00LjAzdjguMDVjMS40OC0uNzMgMi41LTIuMjUgMi41LTQuMDJ6TTE0IDMuMjN2Mi4wNmMyLjg5Ljg2IDUgMy41NCA1IDYuNzFzLTIuMTEgNS44NS01IDYuNzF2Mi4wNmM0LjAxLS45MSA3LTQuNDkgNy04Ljc3cy0yLjk5LTcuODYtNy04Ljc3eiIvPgogICAgPHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K));
+/* 3️⃣  Overflow (⋮) button */
+audio::-internal-media-controls-overflow-button,
+audio::-webkit-media-controls-overflow-button {
+    /* colour of the icon */
+    color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    /* background of the circular button */
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    border-radius: 50% !important;
 }
 
-audio::-webkit-media-controls-play-button {
-    background-image: light-dark(url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3dUZXh0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxwYXRoIGQ9Ik04IDV2MTRsMTEtN3oiLz4KICAgIDxwYXRoIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiLz4KPC9zdmc+), url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3ciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTggNXYxNGwxMS03eiIvPgogICAgPHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K));
+/* If the SVG inside the overflow button still stays dark, flip it */
+audio::-internal-media-controls-overflow-button svg,
+audio::-webkit-media-controls-overflow-button svg {
+    filter: invert(1) !important;
 }
 
-audio::-internal-media-controls-overflow-button {
-    background-image: light-dark(url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIKCSB2aWV3Qm94PSIwIDAgMjQgMjQiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDI0IDI0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgZmlsbD0iV2luZG93VGV4dCI+CjxnPgoJPGNpcmNsZSBjeD0iMTIiIGN5PSI2IiByPSIyIi8+Cgk8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIyIi8+Cgk8Y2lyY2xlIGN4PSIxMiIgY3k9IjE4IiByPSIyIi8+CjwvZz4KPC9zdmc+Cg==), url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIKCSB2aWV3Qm94PSIwIDAgMjQgMjQiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDI1NSAyNTU7IiB4bWw6c3BhY2U9InByZXNlcnZlIiBmaWxsPSJXaW5kb3ciPgo8Zz4KCTxjaXJjbGUgY3g9IjEyIiBjeT0iNiIgcj0iMiIvPgoJPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMiIvPgoJPGNpcmNsZSBjeD0iMTIiIGN5PSIxOCIgcj0iMiIvPgo8L2c+Cjwvc3ZnPgo=));
+/* -----------------------------------------------------------------
+   Optional “force repaint” helper – run this once after injecting
+   the CSS (e.g. in the console) to make sure the shadow‑DOM reads
+   the new styles immediately:
+   --------------------------------------------------------------- */
+/* document.body.offsetHeight;   /* triggers layout */
+audio::-webkit-media-controls-timeline,
+audio::-internal-media-controls-timeline {
+    /* make the *track* itself use the light‑dark colour */
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+}
+
+audio::-internal-media-controls-segmented-track,
+audio::-internal-track-segment-background,
+audio::-internal-track-segment-highlight-before,
+audio::-internal-track-segment-highlight-after {
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+}
+
+
+audio::-internal-media-controls-overflow-button,
+audio::-webkit-media-controls-overflow-button {
+    color: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
+    border-radius: 50% !important;
+}
+
+audio::-internal-media-controls-overflow-button svg,
+audio::-webkit-media-controls-overflow-button svg {
+    filter: invert(1) !important;
 }

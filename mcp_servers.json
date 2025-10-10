@@ -52,11 +52,16 @@
       "env": {},
       "description": "Wikipedia encyclopedia lookup"
     },
-    "mcp-proxy-multi": {
+    "Home Assistant": {
         "command": "mcp-proxy",
-        "args": ["--port=8080", "--named-server-config", "./mcp_proxy_servers.json"],
-        "env": {},
-        "description": "Multi-server HTTP/SSE to stdio proxy for Home Assistant, Hugging Face, and Context7"
+        "args":
+        [
+            "http://homeassistant.local:8123/mcp_server/sse"
+        ],
+        "env":
+        {
+            "API_ACCESS_TOKEN": "${HOME_ASSISTANT_TOKEN}"
+        }
     }
   },
   "discovery": {

@@ -1,7 +1,7 @@
 {
     "lm_studio_base_url": "http://192.168.1.98:1234/v1",
     "api_key": "lm-studio",
-    "last_used_model": "qwen/qwen3-8b",
+    "last_used_model": "phi-4-mini-instruct",
     "logging_enabled": false,
     "tts_base_url": "http://192.168.1.98:7778",
     "tts_model_name": "chatterbox",

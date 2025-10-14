@@ -1,14 +1,16 @@
-chainlit
-mcp
-requests
-python-dotenv
-openai
-torch
-transformers
-asyncpg
-beautifulsoup4
-mcp-server-time
-mcp-server-fetch
-mcp-server-git
-wikipedia-mcp
-python-dateutil
+chainlit            # Core Requirement
+torch --index-url https://download.pytorch.org/whl/cu129    # Need Cuda 129!
+mcp                 # MCP
+requests            # HTTP library
+python-dateutil     # 
+python-dotenv       # too many secrets
+openai              # Used for LM Studio / OpenAI emulation
+transformers        # Classifier
+asyncpg             # Needed for datalayer
+boto3               # NEeded for Datalayer
+beautifulsoup4      # Pretty parse pages please
+mcp-server-time     # Greetings, Program
+mcp-server-fetch    # MCP
+mcp-server-git      # MCP
+wikipedia-mcp       # MCP
+pyjson

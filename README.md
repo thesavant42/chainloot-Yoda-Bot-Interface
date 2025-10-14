@@ -46,7 +46,7 @@ The goal is to unify and simplify the architecture required to run the robot. Th
 - 3. Fetch Server (mcp-server-fetch)
 - 4. Git Server (mcp-server-git)
 - 5. Memory Server (@modelcontextprotocol/server-memory)
-- 6-. Sequential Thinking Server (@modelcontextprotocol/server-sequential-thinking)
+- 6. Sequential Thinking Server (@modelcontextprotocol/server-sequential-thinking)
 - 7. YouTube Transcript Server (@kimtaeyoon83/mcp-server-youtube-transcript)
 - 8. Wikipedia Server (wikipedia-mcp)
 

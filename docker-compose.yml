@@ -10,6 +10,7 @@ services:
       - "3000:3000"
     volumes:
       - tts_models:/root/.cache/huggingface
+      - ./tts_voices:/app/tts-webui/voices
     environment:
       - TTS_PORT=7778
       - UI_PORT=3000
@@ -19,7 +20,7 @@ services:
   chainlit:
     build: .
     ports:
-      - "8080:8080"
+      - "8000:8000"
       - "8443:8443"
     volumes:
       - ./ssl:/app/ssl

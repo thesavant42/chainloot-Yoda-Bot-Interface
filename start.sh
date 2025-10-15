@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Run database migrations
+echo "Running database migrations..."
+prisma migrate deploy
+echo "Generating Prisma client..."
+prisma generate
+
 # Default mode is https
 MODE="${1:-https}"
 

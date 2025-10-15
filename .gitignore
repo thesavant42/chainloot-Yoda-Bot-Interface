@@ -3,3 +3,4 @@ __pycache__/*
 .env
 .chainlit/*.log
 ssl/*
+.data/*

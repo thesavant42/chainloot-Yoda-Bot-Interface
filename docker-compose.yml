@@ -1,7 +1,28 @@
-include:
-  - path: submodules/chainlit-datalayer/compose.yaml
-
 services:
+  postgres:
+    image: postgres:16
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=chainlit
+    ports:
+      - "5432:5432"
+    networks:
+      - shared_network
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+    ports:
+      - 4566:4566
+    volumes:
+      - "./localstack-script.sh:/etc/localstack/init/ready.d/script.sh"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - shared_network
+
   tts-webui:
     image: ghcr.io/rsxdalv/tts-webui:main
     ports:

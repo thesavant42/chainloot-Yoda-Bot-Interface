@@ -30,6 +30,10 @@ WORKDIR /app
 # Copy app code (includes app.py, .env, etc.)
 COPY . .
 
+# Copy and make executable the startup script
+COPY start.sh .
+RUN chmod +x start.sh
+
 # Install MCP servers explicitly (Python via uv, npm via npm install -g)
 RUN uv tool install mcp-server-time && \
     uv tool install mcp-server-fetch && \
@@ -52,9 +56,9 @@ RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser 
 # Expose ports (8000 for HTTP, 8443 for HTTPS; Chainlit default is 8000)
 EXPOSE 8000 8443
 
-# Health check to ensure the app runs without errors (checks Chainlit health endpoint)
+# Health check to ensure the HTTPS server is running (default mode)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -k -f https://localhost:8443/health || exit 1
 
-# Command to run Chainlit app (without SSL for testing; add --ssl-cert and --ssl-key with mounted certs for production)
-CMD ["chainlit", "run", "app.py", "--host", "0.0.0.0"]
+# Command to run both HTTP and HTTPS servers
+CMD ["./start.sh"]

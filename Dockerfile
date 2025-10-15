@@ -42,7 +42,8 @@ RUN uv tool install mcp-server-time && \
     npm install -g @brave/brave-search-mcp-server && \
     npm install -g @modelcontextprotocol/server-memory && \
     npm install -g @modelcontextprotocol/server-sequential-thinking && \
-    npm install -g @kimtaeyoon83/mcp-server-youtube-transcript
+    npm install -g @kimtaeyoon83/mcp-server-youtube-transcript && \
+    npm install -g mcp-proxy
 
 # Pre-download the sentiment analysis model to avoid runtime downloads
 RUN python -c "from transformers import pipeline; pipeline('text-classification', model='joeddav/distilbert-base-uncased-go-emotions-student')"

@@ -2,7 +2,7 @@
 
 # Run database migrations
 echo "Running database migrations..."
-prisma migrate deploy
+prisma migrate deploy --schema=schema.prisma
 echo "Generating Prisma client..."
 prisma generate
 
@@ -17,7 +17,6 @@ elif [ "$MODE" = "https" ]; then
     chainlit run app.py --host 0.0.0.0 --port 8443 --ssl-cert /app/ssl/chainloot-cert.pem --ssl-key /app/ssl/chainloot-key.pem
 elif [ "$MODE" = "both" ]; then
     echo "Starting both HTTP (8000) and HTTPS (8443) servers"
-    chainlit run app.py --host 0.0.0.0 --port 8000 &
     chainlit run app.py --host 0.0.0.0 --port 8443 --ssl-cert /app/ssl/chainloot-cert.pem --ssl-key /app/ssl/chainloot-key.pem &
     wait
 else

@@ -2,7 +2,7 @@
 FROM python:3.11-slim AS builder
 
 # Install build dependencies (added libssl-dev for SSL support during build)
-RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev git && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
 WORKDIR /app

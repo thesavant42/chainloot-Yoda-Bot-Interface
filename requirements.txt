@@ -14,3 +14,12 @@ mcp-server-fetch    # MCP
 mcp-server-git      # MCP
 wikipedia-mcp       # MCP
 pyjson
+git+https://github.com/rsxdalv/extension_kokoro@main
+git+https://github.com/rsxdalv/extension_rvc@main
+git+https://github.com/rsxdalv/extension_chatterbox@main
+git+https://github.com/rsxdalv/extension_openai_tts_api@main
+git+https://github.com/rsxdalv/tts_webui_extension.chatterbox@main
+git+https://github.com/rsxdalv/tts_webui_extension.openai_tts_api@main
+git+https://github.com/rsxdalv/tts_webui_extension.rvc@main
+git+https://github.com/rsxdalv/tts_webui_extension.demucs@main
+git+https://github.com/rsxdalv/tts_webui_extension.kokoro@main

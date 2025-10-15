@@ -1,0 +1,6 @@
+[submodule "submodules/chainlit-datalayer"]
+	path = submodules/chainlit-datalayer
+	url = https://github.com/Chainlit/chainlit-datalayer.git
+[submodule "submodules/tts-webui"]
+	path = submodules/tts-webui
+	url = https://github.com/erew123/alltalk_tts.git

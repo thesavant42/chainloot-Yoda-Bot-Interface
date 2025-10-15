@@ -81,12 +81,15 @@ For this project, Alpine is preferable for performance if dependencies align; ot
 - If you need to edit a file and I haven't yet said to, you must ask first. 
 - Don't assume anything, this is complicated stuff.
 
-Phase 01: Chainlit frontend app running in a container with existing datalayer
+- [x] Phase 01: Chainlit frontend app running in a container with existing datalayer
 
-Phase 02: Unification of services
- - https://github.com/ashleykleynhans/tts-webui-docker
-  -- will need to map voices directory
- - https://github.com/Chainlit/chainlit-datalayer
- - https://hub.docker.com/r/ollama/ollama
- -- will need to map models folder
-Final Phase: Optimizations
+- [ ] Phase 02: Unification of services
+    - [ ] https://github.com/rsxdalv/TTS-WebUI?tab=readme-ov-file
+        - [ ] will need to map voices directory
+    - [ ] https://github.com/Chainlit/chainlit-datalayer
+    - [ ] https://hub.docker.com/r/ollama/ollama
+        - [ ] will need to map models folder
+    - [ ] All containers should be set to automatically restart unless stopped
+
+
+- [ ] Final Phase: Optimizations

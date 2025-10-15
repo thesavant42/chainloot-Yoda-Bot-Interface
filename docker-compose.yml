@@ -1,0 +1,55 @@
+include:
+  - path: submodules/chainlit-datalayer/compose.yaml
+
+services:
+  tts-webui:
+    image: ghcr.io/rsxdalv/tts-webui:main
+    ports:
+      - "7778:7778"
+      - "7770:7770"
+      - "3000:3000"
+    volumes:
+      - tts_models:/root/.cache/huggingface
+    environment:
+      - TTS_PORT=7778
+      - UI_PORT=3000
+    networks:
+      - shared_network
+
+  chainlit:
+    build: .
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - ./ssl:/app/ssl
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    environment:
+      - TTS_BASE_URL=http://tts-webui:7778
+      - STT_BASE_URL=http://tts-webui:7778
+    depends_on:
+      - postgres
+      - localstack
+      - tts-webui
+      - ollama
+    networks:
+      - shared_network
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    driver: bridge
+
+volumes:
+  ollama_data:
+  tts_models:

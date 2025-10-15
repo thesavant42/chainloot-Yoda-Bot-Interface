@@ -9,17 +9,21 @@ transformers        # Classifier
 asyncpg             # Needed for datalayer
 boto3               # NEeded for Datalayer
 beautifulsoup4      # Pretty parse pages please
+Cython              # Required for building spaCy and other Cython-based packages
+spacy==3.6.1        # Compatible with TTS extension dependencies (russian-text-stresser requires 3.6.*)
 mcp-server-time     # Greetings, Program
 mcp-server-fetch    # MCP
 mcp-server-git      # MCP
 wikipedia-mcp       # MCP
 pyjson
-git+https://github.com/rsxdalv/extension_kokoro@main
-git+https://github.com/rsxdalv/extension_rvc@main
-git+https://github.com/rsxdalv/extension_chatterbox@main
-git+https://github.com/rsxdalv/extension_openai_tts_api@main
-git+https://github.com/rsxdalv/tts_webui_extension.chatterbox@main
-git+https://github.com/rsxdalv/tts_webui_extension.openai_tts_api@main
-git+https://github.com/rsxdalv/tts_webui_extension.rvc@main
-git+https://github.com/rsxdalv/tts_webui_extension.demucs@main
-git+https://github.com/rsxdalv/tts_webui_extension.kokoro@main
+# PyAV is bundled in the extension wheels
+av>=12.0.0  # Use newer PyAV with wheels from TTS index
+--extra-index-url https://tts-webui.github.io/extensions-index/
+fairseq
+gradio-goodtab
+gradio-goodtabs
+gradio-iconbutton
+tts-webui-extension-kokoro
+tts-webui-extension-rvc
+tts-webui-extension-chatterbox
+tts-webui-extension-openai-tts-api

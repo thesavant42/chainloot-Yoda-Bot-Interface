@@ -1,12 +1,17 @@
-# Multi-stage Dockerfile for Chainlit app with MCP support on Debian slim
-FROM python:3.11-slim AS builder
+# Multi-stage Dockerfile for Chainlit app with MCP support on Debian bullseye (for FFmpeg 4.4 compatibility)
+FROM python:3.11-slim-bullseye AS builder
 
-# Install build dependencies (added libssl-dev for SSL support during build)
-RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev git && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apt-get update && apt-get install -y gcc g++ libffi-dev libssl-dev git cmake pkg-config \
+    nasm libz-dev libbz2-dev liblzma-dev \
+    libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libavfilter-dev libswscale-dev libswresample-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set work directory
 WORKDIR /app
 
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip cache purge && pip install --no-cache-dir -r requirements.txt
@@ -15,7 +20,7 @@ RUN pip cache purge && pip install --no-cache-dir -r requirements.txt
 RUN pip install uv
 
 # Final stage
-FROM python:3.11-slim
+FROM python:3.11-slim-bullseye
 
 # Install runtime dependencies (added curl for health checks, nodejs/npm for potential front-end if needed, bash and passwd for user management)
 RUN apt-get update && apt-get install -y nodejs npm curl bash passwd && rm -rf /var/lib/apt/lists/*

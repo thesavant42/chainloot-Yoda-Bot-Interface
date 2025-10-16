@@ -25,6 +25,16 @@ FROM python:3.11-slim-bullseye
 # Install runtime dependencies (added curl for health checks, nodejs/npm for potential front-end if needed, bash and passwd for user management)
 RUN apt-get update && apt-get install -y nodejs npm curl bash passwd && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js 18+ using nvm (required for Prisma and MCP servers)
+ENV NODE_VERSION=20.18.0
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+ENV NVM_DIR=/root/.nvm
+RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
+ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
+RUN node --version && npm --version
+
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin

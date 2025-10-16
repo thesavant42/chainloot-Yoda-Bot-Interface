@@ -24,7 +24,9 @@ services:
       - shared_network
 
   tts-webui:
-    image: ghcr.io/rsxdalv/tts-webui:main
+    build:
+      context: .
+      dockerfile: TTS-WebUI.Dockerfile
     ports:
       - "7778:7778"
       - "7770:7770"
@@ -35,6 +37,13 @@ services:
     environment:
       - TTS_PORT=7778
       - UI_PORT=3000
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - shared_network
 
@@ -54,7 +63,6 @@ services:
     depends_on:
       - postgres
       - localstack
-      - tts-webui
       - ollama
     networks:
       - shared_network
@@ -65,6 +73,13 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - shared_network
 

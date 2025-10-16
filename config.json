@@ -5,7 +5,7 @@
     "logging_enabled": false,
     "tts_base_url": "http://tts-webui:7778",
     "tts_model_name": "chatterbox",
-    "tts_voice": "voices/chatterbox/notfar.wav",
+    "tts_voice": "voices/chatterbox/yoda.wav",
     "tts_exaggeration": 0.5,
     "tts_cfg_weight": 0.5,
     "tts_temperature": 1.4,

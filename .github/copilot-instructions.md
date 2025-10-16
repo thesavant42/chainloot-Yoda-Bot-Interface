@@ -134,6 +134,7 @@ npx @brave/brave-search-mcp-server  # Web search
 - **Async First**: All I/O operations use async/await
 - **Session State**: User preferences stored in `cl.user_session`
 - **Monkey Patching**: Custom S3 client injected for LocalStack compatibility
+- **No Emojis**: Emojis are not allowed in our code
 - **Factory Pattern**: `get_active_mcp_manager()` switches between dynamic/legacy MCP
 
 ## Key Files for Understanding

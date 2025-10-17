@@ -32,6 +32,12 @@ The goal is to unify and simplify the architecture required to run the robot. Th
 - [x] Should integrate Whisper-like ASR (Automatic Speech Recognition)
 - [ ] Should support multi-modal functionality, for image recognition and tool usage
 
+## Latest Update
+Should be pretty close to turn-key in Docker now.
+- Ollama backend enabled by default, still need to download a model. I'm testing with phi4-mini, it can use tools, it's small.
+- Still have to manually enable the openai api service in the gradio interfce on port 7770 the first time, which is why it will complain in the logs.
+     **Check the box under "API" un the "Tools" menu of the Gradio UI.**
+
 ## Known Issues & Troubleshooting
 
 ### Port Conflicts on Restart

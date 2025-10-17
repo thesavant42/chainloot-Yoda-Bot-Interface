@@ -36,6 +36,7 @@ services:
     environment:
       - TTS_PORT=7778
       - UI_PORT=3000
+      - STT_BASE_URL=http://tts-webui:7778
     deploy:
       resources:
         reservations:
@@ -66,6 +67,14 @@ services:
       - postgres
       # - localstack
       - ollama
+      - tts-webui
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - shared_network
 

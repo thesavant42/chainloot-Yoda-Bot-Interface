@@ -427,11 +427,12 @@ async def on_chat_start():
     selected_model = config["last_used_model"]
 
     # Validate the authoritative voice/model lists (must be populated in lib.config_handler)
-    if not available_voices:
-        raise RuntimeError("available_voices is empty. Ensure TTS voices are fetched before starting the chat.")
+    # Skip voice validation if TTS is not available (for testing without TTS-WebUI)
+    tts_available = bool(available_voices)
     if not available_models:
         raise RuntimeError("available_models is empty. Ensure models are fetched before starting the chat.")
-    if selected_voice not in available_voices:
+    
+    if tts_available and selected_voice not in available_voices:
         raise ValueError(f"selected_voice '{selected_voice}' not found in available_voices: {available_voices}")
     if selected_model not in available_models:
         raise ValueError(f"selected_model '{selected_model}' not found in available_models: {available_models}")
@@ -470,19 +471,24 @@ async def on_chat_start():
     model_index = available_models.index(selected_model)
 
     # Render the settings UI (only once)
-    await cl.ChatSettings(
-        [
-            Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index),
-            Select(id="model", label="LLM Model", values=available_models, initial_index=model_index),
-            Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
-            Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
-            Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
+    settings_widgets = [
+        Select(id="model", label="LLM Model", values=available_models, initial_index=model_index),
+        Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
+        Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
+        Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
+        Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
+    ]
+    
+    # Only add voice-related settings if TTS is available
+    if tts_available:
+        settings_widgets.insert(0, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
+        settings_widgets.extend([
             Slider(id="tts_speed", label="TTS Speed", initial=tts_speed, min=0.25, max=4.0, step=0.05),
             Slider(id="tts_exaggeration", label="TTS Exaggeration", initial=tts_exaggeration, min=0.0, max=1.0, step=0.1),
             Slider(id="tts_temperature", label="TTS Temperature", initial=tts_temperature, min=0.0, max=2.0, step=0.1),
-            Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
-        ]
-    ).send()
+        ])
+    
+    await cl.ChatSettings(settings_widgets).send()
 
 @cl.on_chat_end
 async def on_chat_end():

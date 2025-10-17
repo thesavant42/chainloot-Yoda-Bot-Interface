@@ -57,14 +57,21 @@ def fetch_available_models():
 
 def fetch_available_voices():
     """Fetches available TTS voices from Chatterbox API."""
-    try:
-        voices_response = requests.get(f"{chatterbox_url}/v1/audio/voices/chatterbox")
-        voices_response.raise_for_status()
-        voices_data = voices_response.json()
-        return voices_data.get("voices", [])
-    except Exception as e:
-        logger.error(f"Could not fetch voices from TTS API: {e}")
-        return []
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            voices_response = requests.get(f"{chatterbox_url}/v1/audio/voices/chatterbox", timeout=10)
+            voices_response.raise_for_status()
+            voices_data = voices_response.json()
+            return voices_data.get("voices", [])
+        except Exception as e:
+            logger.warning(f"Could not fetch voices from TTS API (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(2)  # Wait 2 seconds before retry
+            else:
+                logger.error(f"Failed to fetch voices after {max_retries} attempts, returning empty list")
+                return []
 
 # --- Load Dynamic Assets on Startup ---
 available_models = fetch_available_models()

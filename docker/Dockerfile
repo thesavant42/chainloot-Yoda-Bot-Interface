@@ -50,7 +50,8 @@ RUN --mount=type=cache,target=/root/.npm \
     npm install -g @modelcontextprotocol/server-memory && \
     npm install -g @modelcontextprotocol/server-sequential-thinking && \
     npm install -g @kimtaeyoon83/mcp-server-youtube-transcript && \
-    npm install -g mcp-proxy --force
+    npm install -g mcp-proxy --force && \
+    npm install -g prisma
 
 # Pre-download the sentiment analysis model to avoid runtime downloads
 RUN --mount=type=cache,target=/root/.cache/huggingface \

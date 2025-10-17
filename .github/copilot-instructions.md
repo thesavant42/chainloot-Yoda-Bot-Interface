@@ -94,13 +94,13 @@ PROFILE_DEFAULTS = {
 ### Local Development
 ```bash
 # Start all services
-docker-compose up
+docker-compose -f docker/docker-compose.yml up
 
 # Run with HTTPS (default)
 ./start.sh https
 
 # Run database migrations
-prisma migrate deploy --schema=schema.prisma
+prisma migrate deploy --schema=database/schema.prisma
 prisma generate
 ```
 
@@ -126,7 +126,8 @@ npx @brave/brave-search-mcp-server  # Web search
 ### File Organization
 - **`lib/`**: Core business logic modules (config, MCP, audio processing)
 - **`docs/`**: API documentation and research notes
-- **`prisma/`**: Database schema and migrations
+- **`database/`**: Database schema and migrations (Prisma ORM)
+- **`docker/`**: Docker configuration and compose files
 - **`public/`**: Static assets (avatars, themes)
 - **`submodules/`**: External dependencies (TTS-WebUI, datalayer)
 
@@ -143,5 +144,5 @@ npx @brave/brave-search-mcp-server  # Web search
 - `lib/mcp_tool_processor.py`: Intelligent tool selection and execution
 - `lib/dynamic_mcp_manager.py`: Modern MCP server management
 - `config.json`: Authoritative configuration source
-- `docker-compose.yml`: Service orchestration and networking
-- `schema.prisma`: Data model for conversation persistence
+- `docker/docker-compose.yml`: Service orchestration and networking
+- `database/schema.prisma`: Data model for conversation persistence

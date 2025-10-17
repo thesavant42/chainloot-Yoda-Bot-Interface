@@ -1,5 +1,70 @@
 # Chainlit S3 Storage Client Fix - Changelog
 
+## Project Structure Reorganization - October 16, 2025
+
+**Status**: **COMPLETED**
+
+### Changes Made
+
+#### Task 1: Docker Files Cleanup
+- **Moved Files**: `docker-compose.yml`, `Dockerfile` moved to `docker/` folder
+- **Created Documentation**: Added comprehensive `docker/README.md` with setup and usage instructions
+- **Updated References**: All documentation and scripts updated to use new paths
+- **Build Verification**: Docker builds and services start correctly with new structure
+
+#### Task 2: Database Files Cleanup
+- **Moved Files**: `schema.prisma`, `migrations/`, `prisma/` moved to `database/` folder
+- **Updated Scripts**: `start.sh` updated to use `database/schema.prisma` for Prisma commands
+- **Docker Configuration**: Updated `docker/docker-compose.yml` with proper `DATABASE_URL` for Docker networking
+- **Created Documentation**: Added comprehensive `database/README.md` with setup and usage instructions
+- **Testing Verified**: Database migrations run successfully, Prisma client generates correctly, Chainlit application starts properly
+
+#### Task 3: Config Folder Cleanup
+- **Moved Files**: `config.json`, `mcp_servers.json`, `mcp_proxy_servers.json` moved to `config/` folder
+- **Updated Code References**: All Python files updated to use new config paths
+- **Config Loading**: `lib/config_handler.py` updated to load from `config/config.json`
+- **Settings Persistence**: `app.py` config_path updated to save to `config/config.json`
+- **MCP Configuration**: All MCP server config references updated to `config/mcp_servers.json`
+- **Created Documentation**: Added comprehensive `config/README.md` with file descriptions and usage guidelines
+- **Testing Verified**: Config loading, saving, and persistence across restarts all working correctly
+
+#### Task 4: Documentation Updates
+- **README.md**: Updated Docker setup instructions to reference `docker/docker-compose.yml`
+- **CHANGELOG.md**: Added this entry documenting the reorganization
+- **Copilot Instructions**: Updated `.github/copilot-instructions.md` with new file paths
+
+### Benefits
+- **Cleaner Root Directory**: Reduced clutter in project root
+- **Better Organization**: Related files grouped logically
+- **Improved Maintainability**: Easier to find and manage related components
+- **Documentation**: Comprehensive READMEs for each organized folder
+
+### Files Affected
+- **Moved**: `docker-compose.yml` → `docker/docker-compose.yml`
+- **Moved**: `Dockerfile` → `docker/Dockerfile`
+- **Moved**: `schema.prisma` → `database/schema.prisma`
+- **Moved**: `migrations/` → `database/migrations/`
+- **Moved**: `prisma/` → `database/prisma/`
+- **Moved**: `config.json` → `config/config.json`
+- **Moved**: `mcp_servers.json` → `config/mcp_servers.json`
+- **Moved**: `mcp_proxy_servers.json` → `config/mcp_proxy_servers.json`
+- **Updated**: `start.sh` - Prisma commands now use `database/schema.prisma`
+- **Updated**: `docker/docker-compose.yml` - Added DATABASE_URL for Docker networking
+- **Updated**: `lib/config_handler.py` - Config loading path updated
+- **Updated**: `app.py` - Config saving path updated
+- **Updated**: `lib/mcp_tool_processor.py` - MCP config path updated
+- **Updated**: `lib/dynamic_mcp_manager.py` - MCP config path updated
+- **Created**: `docker/README.md` - Docker setup documentation
+- **Created**: `database/README.md` - Database setup documentation
+- **Created**: `config/README.md` - Configuration files documentation
+- **Updated**: `README.md` - Docker commands reference new paths
+- **Updated**: `CHANGELOG.md` - Added this reorganization entry
+- **Updated**: `.github/copilot-instructions.md` - Updated file paths
+
+---
+
+## Issue: Application Crash on Shutdown with S3 Storage
+
 ## Issue: Application Crash on Shutdown with S3 Storage
 
 **Date**: October 8, 2025  

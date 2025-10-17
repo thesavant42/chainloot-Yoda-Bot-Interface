@@ -12,9 +12,8 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip cache purge && pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
 
 # Install uv for MCP servers (required for MCP tool usage as per README)
 RUN pip install uv
@@ -39,6 +38,24 @@ RUN node --version && npm --version
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+# Install MCP servers explicitly (Python via uv, npm via npm install -g)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv tool install mcp-server-time && \
+    uv tool install mcp-server-fetch && \
+    uv tool install mcp-server-git
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g wikipedia-mcp && \
+    npm install -g @brave/brave-search-mcp-server && \
+    npm install -g @modelcontextprotocol/server-memory && \
+    npm install -g @modelcontextprotocol/server-sequential-thinking && \
+    npm install -g @kimtaeyoon83/mcp-server-youtube-transcript && \
+    npm install -g mcp-proxy --force
+
+# Pre-download the sentiment analysis model to avoid runtime downloads
+RUN --mount=type=cache,target=/root/.cache/huggingface \
+    python -c "from transformers import pipeline; pipeline('text-classification', model='joeddav/distilbert-base-uncased-go-emotions-student')"
+
 # Set work directory
 WORKDIR /app
 
@@ -48,20 +65,6 @@ COPY . .
 # Copy and make executable the startup script
 COPY start.sh .
 RUN chmod +x start.sh
-
-# Install MCP servers explicitly (Python via uv, npm via npm install -g)
-RUN uv tool install mcp-server-time && \
-    uv tool install mcp-server-fetch && \
-    uv tool install mcp-server-git && \
-    uv tool install wikipedia-mcp && \
-    npm install -g @brave/brave-search-mcp-server && \
-    npm install -g @modelcontextprotocol/server-memory && \
-    npm install -g @modelcontextprotocol/server-sequential-thinking && \
-    npm install -g @kimtaeyoon83/mcp-server-youtube-transcript && \
-    npm install -g mcp-proxy --force
-
-# Pre-download the sentiment analysis model to avoid runtime downloads
-RUN python -c "from transformers import pipeline; pipeline('text-classification', model='joeddav/distilbert-base-uncased-go-emotions-student')"
 
 # Set PATH to include MCP tool locations
 ENV PATH="/root/.local/bin:/usr/local/bin:$PATH"

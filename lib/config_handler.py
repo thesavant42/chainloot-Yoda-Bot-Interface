@@ -12,10 +12,10 @@ load_dotenv()
 
 # --- Load Config File ---
 try:
-    with open('config.json', 'r') as f:
+    with open('config/config.json', 'r') as f:
         config = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError) as e:
-    logger.error(f"Fatal: Failed to load config.json: {e}")
+    logger.error(f"Fatal: Failed to load config/config.json: {e}")
     sys.exit(1)
 
 ## Is this even used anymore???? TODO

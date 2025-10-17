@@ -8,6 +8,39 @@ This folder contains all Docker-related files for the Chainloot Yoda Bot Interfa
 - `TTS-WebUI.Dockerfile`: Dockerfile for building the TTS-WebUI container with GPU support and extensions.
 - `docker-compose.yml`: Orchestrates all services including Chainlit, TTS-WebUI, PostgreSQL, LocalStack, and Ollama.
 
+## Build Optimization
+
+The Dockerfile is optimized for Docker layer caching:
+
+- Python dependencies are installed in a separate builder stage and copied to the final image
+- MCP servers and sentiment analysis model are downloaded before copying application code
+- Cache mounts are used for pip, uv, npm, and Hugging Face caches
+- This allows for faster rebuilds when only application code changes, as the heavy installation steps are cached
+
+### Build Caching Tips
+
+**Enable BuildKit** (recommended for faster builds):
+```bash
+# Windows PowerShell
+$env:DOCKER_BUILDKIT=1
+docker-compose -f docker/docker-compose.yml build
+
+# Or set permanently in PowerShell profile:
+# Add to $PROFILE: $env:DOCKER_BUILDKIT=1
+```
+
+**Use cache-from for incremental builds**:
+```bash
+# Build using previous image as cache source
+docker build --cache-from docker-chainlit:latest -f docker/Dockerfile -t docker-chainlit:latest .
+```
+
+**Clean rebuild** (when dependencies change):
+```bash
+docker builder prune -f  # Clear build cache
+docker-compose -f docker/docker-compose.yml build --no-cache
+```
+
 ## Usage
 
 To start all services:

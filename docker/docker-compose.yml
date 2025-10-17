@@ -11,16 +11,16 @@ services:
       - "5432:5432"
     networks:
       - shared_network
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      SERVICES: s3
-    ports:
-      - 4566:4566
-    volumes:
-      - "../localstack-init:/etc/localstack/init/ready.d"
-    networks:
-      - shared_network
+  # localstack:
+  #   image: localstack/localstack:latest
+  #   environment:
+  #     SERVICES: s3
+  #   ports:
+  #     - 4566:4566
+  #   volumes:
+  #     - "../localstack-init:/etc/localstack/init/ready.d"
+  #   networks:
+  #     - shared_network
 
   tts-webui:
     build:
@@ -47,7 +47,9 @@ services:
       - shared_network
 
   chainlit:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     ports:
       - "8000:8000"
       - "8443:8443"
@@ -59,9 +61,10 @@ services:
     environment:
       - TTS_BASE_URL=http://tts-webui:7778
       - STT_BASE_URL=http://tts-webui:7778
+      - DATABASE_URL=postgresql://root:root@postgres:5432/chainlit
     depends_on:
       - postgres
-      - localstack
+      # - localstack
       - ollama
     networks:
       - shared_network

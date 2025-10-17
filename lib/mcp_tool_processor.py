@@ -10,7 +10,7 @@ import os
 
 def get_active_mcp_manager():
     """Get the active MCP manager (dynamic if config exists, otherwise legacy)"""
-    if os.path.exists("mcp_servers.json"):
+    if os.path.exists("config/mcp_servers.json"):
         from lib.dynamic_mcp_manager import dynamic_mcp_manager
         return dynamic_mcp_manager
     else:

@@ -4,3 +4,4 @@ __pycache__/*
 .chainlit/*.log
 ssl/*
 .data/*
+.vscode/*

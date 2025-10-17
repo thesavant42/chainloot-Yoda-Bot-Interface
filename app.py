@@ -71,12 +71,12 @@ from chainlit.config import (
     McpFeature,
     UISettings,
 )
-config_path = "config.json"
+config_path = "config/config.json"
 mcp_tools_cache = {}
 
 def get_active_mcp_manager():
     """Get the active MCP manager (dynamic if config exists, otherwise legacy)"""
-    if os.path.exists("mcp_servers.json"):
+    if os.path.exists("config/mcp_servers.json"):
         return dynamic_mcp_manager
     else:
         return mcp_manager
@@ -88,8 +88,8 @@ async def initialize_mcp_on_startup():
         print("Pre-initializing MCP servers for optimal user experience...")
         
         # Check if dynamic configuration exists
-        if os.path.exists("mcp_servers.json"):
-            print("Using dynamic MCP configuration (mcp_servers.json)")
+        if os.path.exists("config/mcp_servers.json"):
+            print("Using dynamic MCP configuration (config/mcp_servers.json)")
             await dynamic_mcp_manager.initialize()
             tool_count = len(dynamic_mcp_manager.get_available_tools())
             print(f"Dynamic MCP initialization complete! {tool_count} tools ready.")

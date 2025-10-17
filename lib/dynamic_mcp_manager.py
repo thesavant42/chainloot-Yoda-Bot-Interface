@@ -14,7 +14,7 @@ class DynamicMCPManager:
     Implements proper tool discovery and standardized server management.
     """
     
-    def __init__(self, config_file: str = "mcp_servers.json"):
+    def __init__(self, config_file: str = "config/mcp_servers.json"):
         self.config_file = config_file
         self.config: Dict[str, Any] = {}
         self.sessions: Dict[str, ClientSession] = {}

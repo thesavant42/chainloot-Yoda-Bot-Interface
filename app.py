@@ -311,8 +311,7 @@ async def on_settings_update(settings):
             current_config["tts_temperature"] = settings["tts_temperature"]
         if "reasoning_enabled" in settings: # Persist Reasoning Enabled
             current_config["reasoning_enabled"] = settings["reasoning_enabled"]
-        if "provider" in settings:
-            current_config["provider"] = settings["provider"]
+        # Note: provider is handled separately below
 
         # Write the updated config back to the file
         with open(config_path, 'w') as f:
@@ -324,18 +323,37 @@ async def on_settings_update(settings):
     except Exception as e:
         logger.error(f"Failed to persist settings to {config_path}: {e}")
 
+    # If voice was changed, refresh the settings UI to show the new selection
+    if "voice" in settings:
+        await send_updated_settings_ui(cl.user_session.get("available_models", available_models))
+
     # Handle provider change - refresh models and update UI
     if "provider" in settings:
         new_provider = settings["provider"]
+        old_provider = config.get("provider", "lm-studio")
         try:
             updated_models = fetch_available_models(new_provider)
             cl.user_session.set("available_models", updated_models)
+
+            if not updated_models:
+                await cl.Message(content=f"Cannot switch to {new_provider}: No models available. Please ensure the provider service is running.").send()
+                # Don't persist provider
+                return
+
+            # Persist the provider since models are available
+            config["provider"] = new_provider
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
 
             # Update selected model if it's not in the new list
             selected_model = cl.user_session.get("selected_model")
             if selected_model not in updated_models and updated_models:
                 new_selected = updated_models[0]
                 cl.user_session.set("selected_model", new_selected)
+                # Also update the config so it persists across restarts
+                config["last_used_model"] = new_selected
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=4)
                 await cl.Message(content=f"Switched to {new_selected} (previous model not available in {new_provider})").send()
             else:
                 await cl.Message(content=f"Switched to {new_provider} provider").send()
@@ -372,6 +390,17 @@ async def on_settings_update(settings):
 
 async def send_updated_settings_ui(updated_models):
     """Send updated settings UI with new model list"""
+    # Handle empty model list gracefully
+    if not updated_models:
+        await cl.Message(content="Warning: No models available for the selected provider. Please check that the provider service is running.").send()
+        # Still send UI but with placeholder
+        model_values = ["No models available"]
+        model_index = 0
+    else:
+        model_values = updated_models
+        selected_model = cl.user_session.get("selected_model")
+        model_index = updated_models.index(selected_model) if selected_model in updated_models else 0
+    
     chat_profile_name = cl.user_session.get("chat_profile")
     defaults = PROFILE_DEFAULTS[chat_profile_name]
     default_voice = defaults["default_voice"]
@@ -381,13 +410,7 @@ async def send_updated_settings_ui(updated_models):
         if chat_profile_name in pv:
             selected_voice = pv[chat_profile_name]
 
-    selected_model = cl.user_session.get("selected_model")
-    if selected_model not in updated_models and updated_models:
-        selected_model = updated_models[0]
-        cl.user_session.set("selected_model", selected_model)
-
     voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
-    model_index = updated_models.index(selected_model) if selected_model in updated_models else 0
 
     llm_temp = config["lm_studio_temperature"]
     max_tokens = config["max_tokens"]
@@ -399,7 +422,7 @@ async def send_updated_settings_ui(updated_models):
 
     settings_widgets = [
         Select(id="provider", label="LLM Provider", values=["lm-studio", "ollama"], initial_index=0 if provider == "lm-studio" else 1),
-        Select(id="model", label="LLM Model", values=updated_models, initial_index=model_index),
+        Select(id="model", label="LLM Model", values=model_values, initial_index=model_index),
         Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
         Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
         Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
@@ -501,16 +524,29 @@ async def on_chat_start():
         raise KeyError("config['last_used_model'] is missing or empty")
     selected_model = config["last_used_model"]
 
+    # Ensure selected model is valid, but don't crash - correct it
+    if selected_model not in available_models and available_models:
+        selected_model = available_models[0]
+        config["last_used_model"] = selected_model
+        with open('config/config.json', 'w') as f:
+            json.dump(config, f, indent=4)
+        logger.info(f"Auto-corrected invalid model selection to: {selected_model}")
+    elif not available_models:
+        logger.warning("No models available from current provider - chat may not work until models are available")
+        # Don't crash, let the user see the settings and fix it
+
     # Validate the authoritative voice/model lists (must be populated in lib.config_handler)
     # Skip voice validation if TTS is not available (for testing without TTS-WebUI)
     tts_available = bool(available_voices)
     if not available_models:
-        raise RuntimeError("available_models is empty. Ensure models are fetched before starting the chat.")
+        logger.warning("No models available from current provider - settings will still work but chat may fail")
+        # Don't crash - let user configure and see the issue
     
     if tts_available and selected_voice not in available_voices:
-        raise ValueError(f"selected_voice '{selected_voice}' not found in available_voices: {available_voices}")
-    if selected_model not in available_models:
-        raise ValueError(f"selected_model '{selected_model}' not found in available_models: {available_models}")
+        logger.warning(f"Selected voice '{selected_voice}' not found in available voices - using first available")
+        selected_voice = available_voices[0] if available_voices else selected_voice
+    
+    # selected_model is already corrected above, so no need to validate
 
     # Store validated session values
     cl.user_session.set("system_prompt", system_prompt)
@@ -518,6 +554,7 @@ async def on_chat_start():
     cl.user_session.set("default_voice", default_voice)
     cl.user_session.set("selected_voice", selected_voice)
     cl.user_session.set("selected_model", selected_model)
+    cl.user_session.set("available_models", available_models)
 
     # Remaining settings pulled from config (these keys must exist)
     required_scalar_keys = ["lm_studio_temperature", "max_tokens", "tts_speed", "tts_exaggeration", "tts_temperature", "reasoning_enabled"]
@@ -542,14 +579,19 @@ async def on_chat_start():
     )
 
     # Compute indices AFTER values are validated and set
-    voice_index = available_voices.index(selected_voice)
-    model_index = available_models.index(selected_model)
+    model_index = available_models.index(selected_model) if selected_model in available_models else 0
+    voice_index = available_voices.index(selected_voice) if tts_available else 0
 
     # Render the settings UI (only once)
     provider = config.get("provider", "lm-studio")
+    model_values = available_models if available_models else ["No models available"]
+    model_index = 0  # Default to first item
+    if available_models and selected_model in available_models:
+        model_index = available_models.index(selected_model)
+    
     settings_widgets = [
         Select(id="provider", label="LLM Provider", values=["lm-studio", "ollama"], initial_index=0 if provider == "lm-studio" else 1),
-        Select(id="model", label="LLM Model", values=available_models, initial_index=model_index),
+        Select(id="model", label="LLM Model", values=model_values, initial_index=model_index),
         Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
         Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
         Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
@@ -566,6 +608,10 @@ async def on_chat_start():
         ])
     
     await cl.ChatSettings(settings_widgets).send()
+
+    # Warn user if no models available
+    if not available_models:
+        await cl.Message(content="Warning: The current LLM provider is not accessible or has no models available. Please switch to a different provider using the settings above.").send()
 
 @cl.on_chat_end
 async def on_chat_end():
@@ -585,6 +631,14 @@ async def on_message(message: cl.Message):
     if message.content:
         author_name = message.author
         print(f"Received a message from User: {author_name}")
+        
+        # Validate we have a working model before attempting chat
+        selected_model = cl.user_session.get("selected_model")
+        current_available = cl.user_session.get("available_models", available_models)
+        if not current_available or selected_model not in current_available:
+            await cl.Message(content="No valid model available. Please check your provider settings and ensure models are loaded.").send()
+            return
+        
         await process_user_input_and_respond(message.content)
 
 ### Audio Handling ###

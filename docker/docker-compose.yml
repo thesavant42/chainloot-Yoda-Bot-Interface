@@ -11,16 +11,16 @@ services:
       - "5432:5432"
     networks:
       - shared_network
-  # localstack:
-  #   image: localstack/localstack:latest
-  #   environment:
-  #     SERVICES: s3
-  #   ports:
-  #     - 4566:4566
-  #   volumes:
-  #     - "../localstack-init:/etc/localstack/init/ready.d"
-  #   networks:
-  #     - shared_network
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+    ports:
+      - 4567:4566
+    volumes:
+      - "../localstack-init:/etc/localstack/init/ready.d"
+    networks:
+      - shared_network
 
   tts-webui:
     build:
@@ -55,6 +55,7 @@ services:
       - "8000:8000"
       - "8443:8443"
     volumes:
+      - ../:/app
       - ../ssl:/app/ssl
       - ../uploads:/app/uploads
     env_file:
@@ -65,7 +66,7 @@ services:
       - DATABASE_URL=postgresql://root:root@postgres:5432/chainlit
     depends_on:
       - postgres
-      # - localstack
+      - localstack
       - ollama
       - tts-webui
     deploy:
@@ -83,7 +84,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - ../ollama_data:/root/.ollama
     deploy:
       resources:
         reservations:
@@ -99,5 +100,4 @@ networks:
     driver: bridge
 
 volumes:
-  ollama_data:
   tts_models:

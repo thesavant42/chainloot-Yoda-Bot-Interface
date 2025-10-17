@@ -50,7 +50,7 @@ def get_client():
     provider = config.get("provider", "lm-studio")
     
     if provider == "ollama":
-        base_url = "http://192.168.1.98:11434/v1"
+        base_url = "http://ollama:11434/v1"
         api_key = os.getenv("OLLAMA_API_KEY", "ollama")
     elif provider == "lm-studio":
         base_url = f"{lm_studio_url}/v1"
@@ -70,8 +70,9 @@ def fetch_available_models(provider=None):
     
     try:
         if provider == "ollama":
-            # Ollama uses OpenAI-compatible /v1/models endpoint
-            response = requests.get("http://192.168.1.98:11434/v1/models", timeout=10)
+            # Ollama uses /api/tags endpoint
+            ollama_url = "http://ollama:11434/api/tags"
+            response = requests.get(ollama_url, timeout=10)
             response.raise_for_status()
             models_data = response.json()
             return [model["name"] for model in models_data.get("models", [])]
@@ -108,5 +109,9 @@ def fetch_available_voices():
 
 # --- Load Dynamic Assets on Startup ---
 available_models = fetch_available_models()
+if not available_models:
+    current_provider = config.get("provider", "lm-studio")
+    logger.warning(f"Preferred provider '{current_provider}' is not accessible or has no models. User can switch providers in settings.")
+
 voices_data = fetch_available_voices()
 available_voices = [v.get("value") for v in voices_data if v.get("value")]

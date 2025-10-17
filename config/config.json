@@ -40,5 +40,5 @@
         "AI": "voices/chatterbox/3po.wav",
         "Stark": "voices/chatterbox/stark.wav"
     },
-    "provider": "lm-studio"
+    "provider": "ollama"
 }

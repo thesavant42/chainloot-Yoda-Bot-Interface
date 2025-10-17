@@ -61,6 +61,7 @@ from lib.config_handler import (
     available_voices,
     fetch_available_models,
     fetch_available_voices,
+    get_client,
 )
 from lib.mcp_server_manager import mcp_manager
 from lib.dynamic_mcp_manager import dynamic_mcp_manager
@@ -176,7 +177,7 @@ async def process_user_input_and_respond(user_text: str):
 
     # 3. Get LLM response
     llm_start_time = time.time()
-    response = await client.chat.completions.create(
+    response = await get_client().chat.completions.create(
         model=selected_model,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -310,17 +311,44 @@ async def on_settings_update(settings):
             current_config["tts_temperature"] = settings["tts_temperature"]
         if "reasoning_enabled" in settings: # Persist Reasoning Enabled
             current_config["reasoning_enabled"] = settings["reasoning_enabled"]
+        if "provider" in settings:
+            current_config["provider"] = settings["provider"]
 
         # Write the updated config back to the file
         with open(config_path, 'w') as f:
             json.dump(current_config, f, indent=4)
 
+        # Update the global config dict
+        config.update(current_config)
+
     except Exception as e:
         logger.error(f"Failed to persist settings to {config_path}: {e}")
 
+    # Handle provider change - refresh models and update UI
+    if "provider" in settings:
+        new_provider = settings["provider"]
+        try:
+            updated_models = fetch_available_models(new_provider)
+            cl.user_session.set("available_models", updated_models)
+
+            # Update selected model if it's not in the new list
+            selected_model = cl.user_session.get("selected_model")
+            if selected_model not in updated_models and updated_models:
+                new_selected = updated_models[0]
+                cl.user_session.set("selected_model", new_selected)
+                await cl.Message(content=f"Switched to {new_selected} (previous model not available in {new_provider})").send()
+            else:
+                await cl.Message(content=f"Switched to {new_provider} provider").send()
+
+            # Send updated settings UI with new model list
+            await send_updated_settings_ui(updated_models)
+        except Exception as e:
+            await cl.Message(content=f"Failed to switch provider: {str(e)}").send()
+
     if settings["model_refresh"] == "Refresh Now":
         try:
-            updated_models = fetch_available_models()
+            current_provider = config.get("provider", "lm-studio")
+            updated_models = fetch_available_models(current_provider)
             old_models = cl.user_session.get("available_models", available_models)
             new_models = [m for m in updated_models if m not in old_models]
             cl.user_session.set("available_models", updated_models)
@@ -341,6 +369,53 @@ async def on_settings_update(settings):
         except Exception as e:
             await cl.Message(content=f"Failed to refresh models: {str(e)}").send()
         # Note: User can select "No Action" to stop further refreshes
+
+async def send_updated_settings_ui(updated_models):
+    """Send updated settings UI with new model list"""
+    chat_profile_name = cl.user_session.get("chat_profile")
+    defaults = PROFILE_DEFAULTS[chat_profile_name]
+    default_voice = defaults["default_voice"]
+    selected_voice = default_voice
+    if "profile_voices" in config:
+        pv = config["profile_voices"]
+        if chat_profile_name in pv:
+            selected_voice = pv[chat_profile_name]
+
+    selected_model = cl.user_session.get("selected_model")
+    if selected_model not in updated_models and updated_models:
+        selected_model = updated_models[0]
+        cl.user_session.set("selected_model", selected_model)
+
+    voice_index = available_voices.index(selected_voice) if selected_voice in available_voices else 0
+    model_index = updated_models.index(selected_model) if selected_model in updated_models else 0
+
+    llm_temp = config["lm_studio_temperature"]
+    max_tokens = config["max_tokens"]
+    tts_speed = config["tts_speed"]
+    tts_exaggeration = config["tts_exaggeration"]
+    tts_temperature = config["tts_temperature"]
+    reasoning_enabled = config["reasoning_enabled"]
+    provider = config.get("provider", "lm-studio")
+
+    settings_widgets = [
+        Select(id="provider", label="LLM Provider", values=["lm-studio", "ollama"], initial_index=0 if provider == "lm-studio" else 1),
+        Select(id="model", label="LLM Model", values=updated_models, initial_index=model_index),
+        Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
+        Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
+        Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
+        Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
+    ]
+    
+    # Only add voice-related settings if TTS is available
+    if available_voices:
+        settings_widgets.insert(1, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
+        settings_widgets.extend([
+            Slider(id="tts_speed", label="TTS Speed", initial=tts_speed, min=0.25, max=4.0, step=0.05),
+            Slider(id="tts_exaggeration", label="TTS Exaggeration", initial=tts_exaggeration, min=0.0, max=1.0, step=0.1),
+            Slider(id="tts_temperature", label="TTS Temperature", initial=tts_temperature, min=0.0, max=2.0, step=0.1),
+        ])
+    
+    await cl.ChatSettings(settings_widgets).send()
 
 ### User Stops Task ###
 @cl.on_stop
@@ -471,7 +546,9 @@ async def on_chat_start():
     model_index = available_models.index(selected_model)
 
     # Render the settings UI (only once)
+    provider = config.get("provider", "lm-studio")
     settings_widgets = [
+        Select(id="provider", label="LLM Provider", values=["lm-studio", "ollama"], initial_index=0 if provider == "lm-studio" else 1),
         Select(id="model", label="LLM Model", values=available_models, initial_index=model_index),
         Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
         Slider(id="llm_temp", label="LLM Temperature", initial=llm_temp, min=0.0, max=2.0, step=0.1),
@@ -481,7 +558,7 @@ async def on_chat_start():
     
     # Only add voice-related settings if TTS is available
     if tts_available:
-        settings_widgets.insert(0, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
+        settings_widgets.insert(1, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
         settings_widgets.extend([
             Slider(id="tts_speed", label="TTS Speed", initial=tts_speed, min=0.25, max=4.0, step=0.05),
             Slider(id="tts_exaggeration", label="TTS Exaggeration", initial=tts_exaggeration, min=0.0, max=1.0, step=0.1),

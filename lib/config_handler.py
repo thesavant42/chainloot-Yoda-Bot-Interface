@@ -39,20 +39,53 @@ if not chatterbox_url:
     logger.error("chatterbox_url not found in config.json. Exiting.")
     sys.exit(1)
 
+# Legacy client for backward compatibility (will be replaced by get_client)
 client = AsyncOpenAI(base_url=f"{lm_studio_url}/v1", api_key=api_key)
 tts_client = AsyncOpenAI(base_url=f"{chatterbox_url}/v1", api_key=api_key)
 stt_client = AsyncOpenAI(base_url=f"{chatterbox_url}/v1", api_key=api_key)
 
+# --- Dynamic Client Factory ---
+def get_client():
+    """Get the appropriate AsyncOpenAI client based on current provider"""
+    provider = config.get("provider", "lm-studio")
+    
+    if provider == "ollama":
+        base_url = "http://192.168.1.98:11434/v1"
+        api_key = os.getenv("OLLAMA_API_KEY", "ollama")
+    elif provider == "lm-studio":
+        base_url = f"{lm_studio_url}/v1"
+        api_key = os.getenv("LM_API_KEY", config.get("api_key"))
+    else:
+        # Default to LM Studio
+        base_url = f"{lm_studio_url}/v1"
+        api_key = os.getenv("LM_API_KEY", config.get("api_key"))
+    
+    return AsyncOpenAI(base_url=base_url, api_key=api_key)
+
 # --- Dynamic Asset Fetching (Functions) ---
-def fetch_available_models():
-    """Fetches available LLM models from LM Studio."""
+def fetch_available_models(provider=None):
+    """Fetches available LLM models from the specified provider."""
+    if provider is None:
+        provider = config.get("provider", "lm-studio")
+    
     try:
-        response = requests.get(f"{lm_studio_url}/api/v0/models")
-        response.raise_for_status()
-        models_data = response.json()["data"]
-        return [m["id"] for m in models_data if m.get("type") == "llm" and "whisper" not in m.get("id", "").lower()]
+        if provider == "ollama":
+            # Ollama uses OpenAI-compatible /v1/models endpoint
+            response = requests.get("http://192.168.1.98:11434/v1/models", timeout=10)
+            response.raise_for_status()
+            models_data = response.json()
+            return [model["name"] for model in models_data.get("models", [])]
+        elif provider == "lm-studio":
+            # LM Studio uses /api/v0/models endpoint
+            response = requests.get(f"{lm_studio_url}/api/v0/models", timeout=10)
+            response.raise_for_status()
+            models_data = response.json()
+            return [m["id"] for m in models_data.get("data", []) if m.get("type") == "llm" and "whisper" not in m.get("id", "").lower()]
+        else:
+            logger.error(f"Unknown provider: {provider}")
+            return []
     except Exception as e:
-        logger.error(f"Could not fetch models from LM Studio: {e}")
+        logger.error(f"Could not fetch models from {provider}: {e}")
         return []
 
 def fetch_available_voices():

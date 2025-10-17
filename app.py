@@ -177,15 +177,31 @@ async def process_user_input_and_respond(user_text: str):
 
     # 3. Get LLM response
     llm_start_time = time.time()
-    response = await get_client().chat.completions.create(
-        model=selected_model,
-        messages=[
+    
+    # Prepare common parameters
+    request_params = {
+        "model": selected_model,
+        "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_text}
         ],
-        temperature=llm_temp,
-        max_tokens=max_tokens,
-    )
+        "temperature": llm_temp,
+        "max_tokens": max_tokens,
+    }
+    
+    # Add context length for Ollama if configured
+    provider = config.get("provider", "lm-studio")
+    if provider == "ollama":
+        ollama_context_length = os.getenv("OLLAMA_CONTEXT_LENGTH")
+        if ollama_context_length:
+            try:
+                context_length = int(ollama_context_length)
+                request_params["extra_body"] = {"num_ctx": context_length}
+                logger.info(f"Using Ollama context length: {context_length}")
+            except ValueError:
+                logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}, ignoring")
+    
+    response = await get_client().chat.completions.create(**request_params)
     llm_end_time = time.time()
     logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
     
@@ -285,6 +301,13 @@ async def on_settings_update(settings):
     cl.user_session.set("tts_speed", settings["tts_speed"])
     cl.user_session.set("tts_exaggeration", settings["tts_exaggeration"])
     cl.user_session.set("reasoning_enabled", settings["reasoning_enabled"])
+    
+    # Handle Ollama context length
+    if "ollama_context_length" in settings:
+        cl.user_session.set("ollama_context_length", int(settings["ollama_context_length"]))
+        # Update environment variable for current session
+        os.environ["OLLAMA_CONTEXT_LENGTH"] = str(settings["ollama_context_length"])
+        logger.info(f"Updated Ollama context length to: {settings['ollama_context_length']}")
 
     # Persist settings to config.json
     try:
@@ -429,6 +452,11 @@ async def send_updated_settings_ui(updated_models):
         Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
     ]
     
+    # Add Ollama-specific settings
+    if provider == "ollama":
+        ollama_context = cl.user_session.get("ollama_context_length", 4096)
+        settings_widgets.insert(3, Slider(id="ollama_context_length", label="Context Length", initial=ollama_context, min=1024, max=131072, step=1024))
+    
     # Only add voice-related settings if TTS is available
     if available_voices:
         settings_widgets.insert(1, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
@@ -555,6 +583,7 @@ async def on_chat_start():
     cl.user_session.set("selected_voice", selected_voice)
     cl.user_session.set("selected_model", selected_model)
     cl.user_session.set("available_models", available_models)
+    cl.user_session.set("ollama_context_length", int(os.getenv("OLLAMA_CONTEXT_LENGTH", "4096")))
 
     # Remaining settings pulled from config (these keys must exist)
     required_scalar_keys = ["lm_studio_temperature", "max_tokens", "tts_speed", "tts_exaggeration", "tts_temperature", "reasoning_enabled"]
@@ -597,6 +626,11 @@ async def on_chat_start():
         Slider(id="max_tokens", label="Max Tokens", initial=max_tokens, min=100, max=2000, step=50),
         Switch(id="reasoning_enabled", label="Enable Reasoning", initial=reasoning_enabled),
     ]
+    
+    # Add Ollama-specific settings
+    if provider == "ollama":
+        ollama_context = cl.user_session.get("ollama_context_length", 4096)
+        settings_widgets.insert(3, Slider(id="ollama_context_length", label="Context Length", initial=ollama_context, min=1024, max=131072, step=1024))
     
     # Only add voice-related settings if TTS is available
     if tts_available:

@@ -94,6 +94,7 @@ temp/
 chainlit.md
 
 # TTS and ML models
+ollama_data/
 models/
 checkpoints/
 *.pth

@@ -1,1 +1,0 @@
-# This folder is for artifacts that are obsolete, and no longer used, but still have reference value. Files in this folder should not need to be modified.

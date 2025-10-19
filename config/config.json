@@ -14,7 +14,7 @@
     "tts_seed": -1,
     "tts_chunked": true,
     "tts_response_format": "wav",
-    "tts_speed": 1,
+    "tts_speed": 0.85,
     "tts_stream": true,
     "tts_use_compilation": true,
     "tts_max_new_tokens": 1000,
@@ -36,7 +36,7 @@
     "character": null,
     "reasoning_enabled": false,
     "profile_voices": {
-        "Yoda": "voices/chatterbox/23.wav",
+        "Yoda": "voices/chatterbox/18.wav",
         "AI": "voices/chatterbox/3po.wav",
         "Stark": "voices/chatterbox/stark.wav"
     },

@@ -50,7 +50,7 @@ I would like to build a modular system to react based upon those emotions.
 
 -----
 
-### \#\# Why the MQTT-Based Approach is Excellent ✅
+### \#\# Why the MQTT-Based Approach is Excellent
 
   * **Decoupling:** Your Chainlit application (the **publisher**) doesn't need to know or care what is listening. It just shouts its emotional state into the void (the MQTT topic). The lights, a display, or any future device (the **subscribers**) can listen for that message without the publisher ever being modified. This is incredibly powerful.
   * **Scalability:** Want to add a display that shows an animated face? Just write a new subscriber script for it. Want to have a speaker play a soft sound? Another subscriber. You never have to touch the original chatbot code.
@@ -131,25 +131,28 @@ These are the services that listen to the topic and do something.
 
 These are questions that I still have outstanding. Use MCP tools like context7 and Deepwiki, as well as websearch, to look up the latest documentation as needed to answer these questions:
 
-Q: I don't know a lot of the more advanced features of MQTT so I suspect I'm barely scratching the surface of what is even possible. What are some features of MQTT that can assist with this project?
-A: MQTT offers several advanced features that can enhance your emotion state machine beyond basic pub/sub:
+**Q:** I don't know a lot of the more advanced features of MQTT so I suspect I'm barely scratching the surface of what is even possible. What are some features of MQTT that can assist with this project?
 
-Quality of Service (QoS) Levels: Critical for reliable emotion state delivery. Use QoS 1 ("at least once") or 2 ("exactly once") to ensure emotion updates reach subscribers even on unreliable networks, preventing missed state changes that could affect user experience (e.g., a "happy" state not triggering lights). QoS 0 ("at most once") is fine for non-critical updates but may drop messages under network stress (MQTT.org, 2024).
 
-Retained Messages: The broker stores the last message on a topic, automatically sent to new subscribers. This ensures devices joining mid-session (e.g., a display turning on) immediately receive the current emotion state without waiting for the next update—ideal for your idle/online transitions (MQTT.org, 2024).
+**A:** MQTT offers several advanced features that can enhance your emotion state machine beyond basic pub/sub:
 
-Last Will and Testament (LWT): If the bot disconnects unexpectedly, the broker publishes a predefined "offline" or "error" message. This can trigger fallback states (e.g., neutral/idle) on subscribers, maintaining continuity during network issues (MQTT.org, 2024).
+  - Quality of Service (QoS) Levels: Critical for reliable emotion state delivery. Use QoS 1 ("at least once") or 2 ("exactly once") to ensure emotion updates reach subscribers even on unreliable networks, preventing missed state changes that could affect user experience (e.g., a "happy" state not triggering lights). QoS 0 ("at most once") is fine for non-critical updates but may drop messages under network stress (MQTT.org, 2024).
 
-Persistent Sessions: Reduces reconnection time on unreliable networks by maintaining subscriptions and queued messages across disconnections. Useful for IoT deployments where bots might lose connectivity briefly (MQTT.org, 2024).
+  - Retained Messages: The broker stores the last message on a topic, automatically sent to new subscribers. This ensures devices joining mid-session (e.g., a display turning on) immediately receive the current emotion state without waiting for the next update—ideal for your idle/online transitions (MQTT.org, 2024).
 
-Wildcard Subscriptions: Subscribers can use + (single level) or # (multi-level) wildcards to listen to multiple personas (e.g., /chainloot/persona/+/feelings for all characters), simplifying scaling to multiple bots (MQTT.org, 2024).
+  - Last Will and Testament (LWT): If the bot disconnects unexpectedly, the broker publishes a predefined "offline" or "error" message. This can trigger fallback states (e.g., neutral/idle) on subscribers, maintaining continuity during network issues (MQTT.org, 2024).
 
-Security Features: TLS encryption and OAuth authentication can secure emotion data if exposed externally, though less critical for local Home Assistant setups (MQTT.org, 2024).
+  - Persistent Sessions: Reduces reconnection time on unreliable networks by maintaining subscriptions and queued messages across disconnections. Useful for IoT deployments where bots might lose connectivity briefly (MQTT.org, 2024).
+
+  - Wildcard Subscriptions: Subscribers can use + (single level) or # (multi-level) wildcards to listen to multiple personas (e.g., /chainloot/persona/+/feelings for all characters), simplifying scaling to multiple bots (MQTT.org, 2024).
+
+  - Security Features: TLS encryption and OAuth authentication can secure emotion data if exposed externally, though less critical for local Home Assistant setups (MQTT.org, 2024).
 
 These features are supported in MQTT 5.0 (your Mosquitto broker handles this), and the Paho Python client (your likely choice for the app) implements them fully (Eclipse Paho, 2024).
 
-Q: I'm currently testing with my Home Assistant MQTT broker, but this doesn't scale. I need an MQTT broker as part of the application. Should I add another continer into the docker compose, or should I integrate it as part of the chainloot app container? I'd prefer to not add MORE containers to the stack if it can be avoided.
-A: You should add Mosquitto as a separate container in your Docker Compose stack. While integrating it into the Chainloot app container (e.g., as a subprocess) avoids an extra service, it's not recommended for production/scalability:
+**Q:** I'm currently testing with my Home Assistant MQTT broker, but this doesn't scale. I need an MQTT broker as part of the application. Should I add another continer into the docker compose, or should I integrate it as part of the chainloot app container? I'd prefer to not add MORE containers to the stack if it can be avoided.
+
+**A:** You should add Mosquitto as a separate container in your Docker Compose stack. While integrating it into the Chainloot app container (e.g., as a subprocess) avoids an extra service, it's not recommended for production/scalability:
 
 Best Practice: Run the broker as an independent service for isolation, easier management, and resource allocation. Mosquitto is lightweight (suitable for low-power devices) and has an official Docker image, making it straightforward to add to docker-compose.yml (Eclipse Mosquitto, 2024).
 
@@ -159,11 +162,12 @@ Implementation: In docker-compose.yml, add a mosquitto service using image: ecli
 
 If you have constraints (e.g., very limited resources), integration is possible using Python's subprocess to run Mosquitto, but prioritize the container approach for maintainability.
 
-Recommendations
-Prototype Retained Messages: Test with QoS 1 and retained flags in Paho Python to ensure instant state sync for new subscribers.
-Error Handling: Implement LWT for graceful offline states to avoid stuck "online" statuses.
-Testing: Use Mosquitto's test server (test.mosquitto.org) initially, then switch to your Docker setup.
-Next Steps Alignment: Your plan to update MQTT post-TTS classification is spot-on—add callbacks in feels_classifier.py to publish JSON payloads.
+### Recommendations
+
+- [ ] Prototype Retained Messages: Test with QoS 1 and retained flags in Paho Python to ensure instant state sync for new subscribers.
+- [ ] Error Handling: Implement LWT for graceful offline states to avoid stuck "online" statuses.
+- [ ] Testing: Use Mosquitto's test server (test.mosquitto.org) initially, then switch to your Docker setup.
+- [ ] Next Steps Alignment: Your plan to update MQTT post-TTS classification is spot-on—add callbacks in feels_classifier.py to publish JSON payloads.
 If you'd like code snippets for Paho MQTT integration or Docker Compose updates, let me know!
 
 

@@ -17,6 +17,7 @@ mcp-server-git      # MCP
 wikipedia-mcp       # MCP
 pyjson
 prisma              # Database ORM for datalayer
+paho-mqtt           # MQTT client for emotion publishing
 # PyAV is bundled in the extension wheels
 av>=12.0.0  # Force PyAV with wheels to avoid compilation on VM
 --extra-index-url https://tts-webui.github.io/extensions-index/

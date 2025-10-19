@@ -4,7 +4,7 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 # Install Pre-reqs
 RUN apt-get update && apt-get install --no-install-recommends -y \
     git vim nano build-essential python3-dev python3-venv python3-pip gcc g++ ffmpeg pkg-config \
-    libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libavfilter-dev libswscale-dev libswresample-dev
+    libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libavfilter-dev libswscale-dev libswresample-dev jq
 
 ENV NODE_VERSION=22.9.0
 RUN apt-get update && apt install -y curl
@@ -25,9 +25,9 @@ RUN npm --version
 ENV TORCH_VERSION=2.7.0
 
 ENV PATH="/root/.cargo/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN --mount=type=cache,target=/root/.cache/pip pip install --upgrade pip setuptools wheel
 # add xformers?
-RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN --mount=type=cache,target=/root/.cache/pip pip install setuptools torch==$TORCH_VERSION torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 # Set working directory
 WORKDIR /app
@@ -38,8 +38,8 @@ RUN git clone https://github.com/rsxdalv/tts-webui.git /app/tts-webui
 # Set working directory to the cloned repo
 WORKDIR /app/tts-webui
 
-# Install all requirements
-RUN pip3 install --no-cache-dir torch==$TORCH_VERSION -r requirements.txt
+# Install all requirements (torch already installed above)
+RUN --mount=type=cache,target=/root/.cache/pip pip3 install -r requirements.txt
 # RUN pip install --no-cache-dir --verbose torch==$TORCH_VERSION -r requirements.txt
 RUN pip install tts-webui-extension.bark_voice_clone>=0.0.1 --extra-index-url https://tts-webui.github.io/extensions-index/
 # RUN pip install tts-webui-extension.rvc>=0.0.3 --extra-index-url https://tts-webui.github.io/extensions-index/
@@ -49,13 +49,19 @@ RUN pip install tts-webui-extension.bark_voice_clone>=0.0.1 --extra-index-url ht
 # RUN pip install tts-webui-extension.stable_audio>=0.1.1 --extra-index-url https://tts-webui.github.io/extensions-index/
 
 # Install OpenAI TTS API extension for OpenAI-compatible endpoints
-RUN pip install tts-webui-extension-openai-tts-api --extra-index-url https://tts-webui.github.io/extensions-index/
+RUN --mount=type=cache,target=/root/.cache/pip pip install tts-webui-extension-openai-tts-api --extra-index-url https://tts-webui.github.io/extensions-index/
 
 # Install CUDA toolkit extension for GPU support
-RUN pip install git+https://github.com/rsxdalv/tts_webui_extension.cuda_toolkit@main
+RUN --mount=type=cache,target=/root/.cache/pip pip install git+https://github.com/rsxdalv/tts_webui_extension.cuda_toolkit@main
 
 # Install Chatterbox TTS extension for voice generation
-RUN pip install git+https://github.com/rsxdalv/tts_webui_extension.chatterbox@main
+RUN --mount=type=cache,target=/root/.cache/pip pip install git+https://github.com/rsxdalv/tts_webui_extension.chatterbox@main
+
+# Copy TTS-WebUI config with auto-start enabled
+COPY tts-webui-config.json /app/tts-webui/config.json
+
+# Ensure extension_openai_tts_api auto_start is set to true if not present
+RUN jq '.extension_openai_tts_api = (.extension_openai_tts_api // {}) | .extension_openai_tts_api.auto_start = (.extension_openai_tts_api.auto_start // true)' /app/tts-webui/config.json > /tmp/config.json && mv /tmp/config.json /app/tts-webui/config.json
 
 # add postgres & run setup
 # Build the React UI

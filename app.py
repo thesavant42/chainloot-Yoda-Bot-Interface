@@ -44,10 +44,11 @@ import asyncio
 from chainlit.input_widget import Select, Slider, Switch
 import json
 import os
-from lib.message_processor import process_message_for_tts
+from lib.mqtt_publisher import get_mqtt_publisher
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
 from lib.text_utils import scrub_unsafe_characters
+from lib.message_processor import process_message_for_tts
 from typing import Dict, Any, List
 from mcp import ClientSession
 from mcp.types import CallToolResult, TextContent
@@ -207,7 +208,8 @@ async def process_user_input_and_respond(user_text: str):
     
     # Get the response content and scrub it for safety
     full_response = response.choices[0].message.content.strip()
-    results = await process_message_for_tts(full_response)
+    persona = cl.user_session.get("chat_profile")
+    results = await process_message_for_tts(full_response, persona)
     # Run message through processing pipeline
     
     for r in results:
@@ -646,6 +648,10 @@ async def on_chat_start():
     # Warn user if no models available
     if not available_models:
         await cl.Message(content="Warning: The current LLM provider is not accessible or has no models available. Please switch to a different provider using the settings above.").send()
+
+    # Publish online status to MQTT
+    mqtt_publisher = get_mqtt_publisher()
+    mqtt_publisher.publish_status(chat_profile_name.lower(), "online")
 
 @cl.on_chat_end
 async def on_chat_end():

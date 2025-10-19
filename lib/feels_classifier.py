@@ -29,7 +29,7 @@ try:
         "text-classification",
         model=model_id,
         device=device,
-        top_k=1
+        top_k=None  # Get all emotions with scores
     )
 except Exception as e:
     print(f"Error initializing classifier: {e}")
@@ -43,8 +43,13 @@ def classify_sentiment(text_content: str) -> dict:
         text_content: The text to analyze.
 
     Returns:
-        A dictionary containing the classification results, or an error message if classification fails.
-        Example: {"emotion": "joy", "score": 0.99}
+        A dictionary containing all emotions with their normalized weights, 
+        plus dominant emotion and score, or an error message if classification fails.
+        Example: {
+            "dominant_emotion": "joy", 
+            "dominant_score": 0.99,
+            "weights": {"joy": 0.5, "sadness": 0.3, ...}
+        }
     """
     if classifier is None:
         return {"error": "Classifier not initialized. Please check logs for details."}
@@ -56,12 +61,21 @@ def classify_sentiment(text_content: str) -> dict:
             
         predictions = classifier(text_content)
         
-        # The pipeline returns a list of lists, e.g., [[{'label': 'joy', 'score': 0.99}]]
-        # We want to return a more structured format, e.g., {'emotion': 'joy', 'score': 0.99}
+        # predictions is a list of dicts like [{'label': 'joy', 'score': 0.8}, ...]
         if predictions and predictions[0]:
+            # Sort by score descending
+            sorted_preds = sorted(predictions[0], key=lambda x: x['score'], reverse=True)
+            
+            # Create weights dict, normalized to sum to 1
+            total_score = sum(pred['score'] for pred in sorted_preds)
+            weights = {pred['label']: pred['score'] / total_score for pred in sorted_preds}
+            
+            dominant = sorted_preds[0]
+            
             result = {
-                "emotion": predictions[0][0]['label'],
-                "score": predictions[0][0]['score']
+                "dominant_emotion": dominant['label'],
+                "dominant_score": dominant['score'],
+                "weights": weights
             }
             return result
         else:

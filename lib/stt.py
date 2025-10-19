@@ -97,33 +97,38 @@ async def handle_audio_chunk(chunk, audio_buffer: list[bytes] | None) -> list[by
         
     return audio_buffer
 
-async def handle_audio_end(stt_client: OpenAI, audio_buffer: list[bytes] | None, stt_model: str) -> str:
+import requests
+import asyncio
+import logging
+from typing import Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+async def handle_audio_end(stt_client, audio_buffer: bytes, stt_model: str) -> str:
     """
-    Processes the recorded audio buffer, performs STT, and returns the transcription.
-
-    Args:
-        stt_client: An initialized OpenAI client configured for STT.
-        audio_buffer: The list of audio byte chunks recorded.
-        stt_model: The STT model to use for transcription.
-
-    Returns:
-        The transcribed text.
-
-    Raises:
-        Exception: If no audio data is found or transcription fails.
+    Process audio buffer and return transcribed text.
     """
     if not audio_buffer:
-        logger.warning("STT: Empty audio buffer at end of recording.")
-        raise Exception("No speech detected in audio.")
-    
-    # Combine all chunks into single audio bytes
-    audio_bytes: bytes = b"".join(audio_buffer)
-    logger.info(f"STT: Combined audio chunks - Total bytes: {len(audio_bytes)}")
-    
-    # Perform transcription
-    user_text = await transcribe_audio(stt_client=stt_client, audio_bytes=audio_bytes, model=stt_model)
-    
-    return user_text
+        return ""
+
+    try:
+        # Prepare the request for TTS-WebUI
+        files = {
+            'file': ('audio.wav', audio_buffer, 'audio/wav'),
+            'model': (None, stt_model or 'whisper-1'),
+        }
+
+        response = await stt_client.post("/v1/audio/transcriptions", files=files)
+        response.raise_for_status()
+
+        result = response.json()
+        text = result.get('text', '').strip()
+        logger.info(f"STT successful: '{text}'")
+        return text
+
+    except Exception as e:
+        logger.error(f"STT transcription failed: {e}")
+        return ""
 
 # --- References to update ---
 # - Calls to stt_client.audio.transcriptions.create

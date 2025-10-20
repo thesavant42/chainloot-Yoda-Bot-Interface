@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoda's Feelings Monitor</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Socket.IO client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* A subtle animation for the image and text updates */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-sm mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-emerald-400">Yoda's Feelings</h1>
+            <p class="text-slate-400 mt-1">Real-time emotion display</p>
+            <p class="text-xs text-slate-500 mt-2 break-all">
+                Listening to MQTT Topic: <span class="font-mono bg-slate-800 px-1 py-0.5 rounded">{{ topic }}</span>
+            </p>
+        </header>
+
+        <main class="bg-slate-800 rounded-2xl shadow-2xl shadow-emerald-900/20 overflow-hidden">
+            <div class="p-4">
+                <!-- Image container -->
+                <div class="aspect-[2/3] w-full bg-slate-700 rounded-lg overflow-hidden">
+                    <img id="emotion-image" 
+                         src="https://placehold.co/400x600/667788/FFFFFF?text=Waiting+for+Signal..." 
+                         alt="A portrait representing the character's current emotion" 
+                         class="w-full h-full object-cover">
+                </div>
+            </div>
+            <footer class="bg-slate-800/50 p-4 border-t border-slate-700">
+                <p class="text-slate-400 text-sm text-center">Current Dominant Emotion:</p>
+                <!-- Emotion text container -->
+                <h2 id="emotion-text" class="text-3xl font-bold text-center capitalize text-white mt-1">
+                    Connecting...
+                </h2>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // Connect to the Socket.IO server.
+        // The server address is inferred from the current page's URL.
+        const socket = io();
+
+        // Get references to the HTML elements we want to update.
+        const emotionImage = document.getElementById('emotion-image');
+        const emotionText = document.getElementById('emotion-text');
+        
+        // This function adds and removes the animation class to re-trigger it.
+        function applyFadeInAnimation(element) {
+            element.classList.remove('fade-in');
+            // This little trick forces a reflow, allowing the animation to restart
+            void element.offsetWidth; 
+            element.classList.add('fade-in');
+        }
+
+        // Listen for the 'connect' event to confirm connection.
+        socket.on('connect', function() {
+            console.log('Successfully connected to the server!');
+            emotionText.textContent = 'Connected!';
+        });
+
+        // Listen for the 'emotion_update' event from the server.
+        socket.on('emotion_update', function(data) {
+            console.log('Received emotion update:', data);
+            
+            // Update the image source and the text content with the new data.
+            emotionImage.src = data.image_url;
+            emotionText.textContent = data.emotion;
+            
+            // Apply the fade-in animation to both elements for a smooth transition.
+            applyFadeInAnimation(emotionImage);
+            applyFadeInAnimation(emotionText);
+        });
+
+        // Listen for disconnection events.
+        socket.on('disconnect', function() {
+            console.log('Disconnected from the server.');
+            emotionText.textContent = 'Disconnected';
+        });
+    </script>
+
+</body>
+</html>

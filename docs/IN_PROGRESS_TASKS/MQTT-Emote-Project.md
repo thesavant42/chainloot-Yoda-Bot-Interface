@@ -9,8 +9,8 @@ I have successfully implemented the MQTT-based emotion state machine for the Cha
 ### ✅ Completed Tasks
 
 1. **Mosquitto MQTT Broker Setup**
-   - Added `mosquitto` service to `docker/docker-compose.yml` with proper configuration
-   - Created `docker/mosquitto.conf` with authentication settings
+   - Added `mosquitto` service to `install/docker/docker-compose.yml` with proper configuration
+   - Created `install/docker/mosquitto.conf` with authentication settings
    - Generated password file for user 'yoda' using the Docker container method
    
      **Future Password Regeneration Process:**
@@ -29,7 +29,7 @@ I have successfully implemented the MQTT-based emotion state machine for the Cha
      
      3. **Copy the password file to your host:**
         ```bash
-        docker cp temp_mosquitto:/tmp/passwd ./docker/passwd
+        docker cp temp_mosquitto:/tmp/passwd ./install/docker/passwd
         ```
      
      4. **Clean up the temporary container:**
@@ -39,7 +39,7 @@ I have successfully implemented the MQTT-based emotion state machine for the Cha
      
      5. **Restart the Mosquitto service:**
         ```bash
-        cd docker && docker-compose restart mosquitto
+        cd install/docker && docker-compose restart mosquitto
         ```
      
      **Note:** This process creates a hashed password file that Mosquitto can read. The password will be required for any MQTT clients connecting to the broker.

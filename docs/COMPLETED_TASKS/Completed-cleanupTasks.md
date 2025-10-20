@@ -86,7 +86,7 @@ Progress: Completed - Files moved to config/ folder, all code references updated
 - Track the changes and update documentation
 
 ### Completed Updates:
-- Updated README.md Docker setup instructions to use `docker/docker-compose.yml`
+- Updated README.md Docker setup instructions to use `install/docker/docker-compose.yml`
 - Updated CHANGELOG.md with project structure reorganization entry
 - Updated .github/copilot-instructions.md with new file paths
 - Verified all documentation reflects the new folder structure

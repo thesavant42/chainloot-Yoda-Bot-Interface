@@ -1,5 +1,63 @@
 # Chainlit S3 Storage Client Fix - Changelog
 
+## Installation Directory Reorganization - October 19, 2025
+
+**Status**: **COMPLETED**
+
+### Changes Made
+
+#### Task 1: Requirements Files Modularization
+- **Removed**: Monolithic `requirements.txt` file from project root
+- **Created**: Modular requirements files in `install/` directory:
+  - `install/requirements-base.txt` - Core packages shared by all containers
+  - `install/requirements-chainlit.txt` - Chainlit-specific packages
+  - `install/requirements-tts-webui.txt` - TTS-WebUI-specific packages
+- **Updated Dockerfiles**: Both `install/docker/Dockerfile` and `install/docker/TTS-WebUI.Dockerfile` now use appropriate requirements files
+- **Benefits**: Eliminates package conflicts, reduces container sizes, prevents unnecessary package installations
+
+#### Task 2: Docker Directory Relocation
+- **Moved**: `docker/` folder from root → `install/docker/`
+- **Updated**: All docker-compose references throughout codebase to use `install/docker/docker-compose.yml`
+- **Updated**: Dockerfile references in docker-compose.yml to use `install/docker/Dockerfile`
+- **Benefits**: Consolidates all installation-related files in one location
+
+#### Task 3: LocalStack Initialization Relocation
+- **Moved**: `localstack-init/` folder from root → `install/localstack-init/`
+- **Updated**: Volume mount in `install/docker/docker-compose.yml` to reference new path
+- **Updated**: All documentation references to point to new location
+- **Benefits**: Groups all installation and initialization files together
+
+#### Task 4: Comprehensive Reference Updates
+- **Updated**: All documentation files, READMEs, and configuration files
+- **Updated**: Copilot instructions and development guidelines
+- **Updated**: Troubleshooting guides and service validation docs
+- **Benefits**: Maintains consistency across all project documentation
+
+### Benefits
+- **Unified Installation Structure**: All installation-related files now reside in `install/` directory
+- **Modular Dependencies**: Service-specific requirements prevent cross-contamination
+- **Cleaner Root Directory**: Reduced clutter and improved project organization
+- **Improved Maintainability**: Easier to find and manage installation components
+- **Better Docker Builds**: Smaller, more efficient containers with only necessary packages
+
+### Files Affected
+- **Removed**: `requirements.txt` (monolithic requirements file)
+- **Moved**: `docker/` → `install/docker/`
+- **Moved**: `localstack-init/` → `install/localstack-init/`
+- **Created**: `install/requirements-base.txt`, `install/requirements-chainlit.txt`, `install/requirements-tts-webui.txt`
+- **Updated**: `install/docker/Dockerfile` - Uses modular requirements
+- **Updated**: `install/docker/TTS-WebUI.Dockerfile` - Uses modular requirements
+- **Updated**: `install/docker/docker-compose.yml` - Updated paths and dockerfile references
+- **Updated**: `README.md` - All docker-compose commands updated
+- **Updated**: `install/docker/README.md` - All examples updated
+- **Updated**: `.github/copilot-instructions.md` - File paths and commands updated
+- **Updated**: `CHANGELOG.md` - Historical references updated
+- **Updated**: `.dockerignore` - Updated ignore paths
+- **Updated**: Multiple documentation files in `docs/` directory
+- **Updated**: All references throughout codebase
+
+---
+
 ## Project Structure Reorganization - October 16, 2025
 
 **Status**: **COMPLETED**
@@ -7,8 +65,8 @@
 ### Changes Made
 
 #### Task 1: Docker Files Cleanup
-- **Moved Files**: `docker-compose.yml`, `Dockerfile` moved to `docker/` folder
-- **Created Documentation**: Added comprehensive `docker/README.md` with setup and usage instructions
+- **Moved Files**: `docker-compose.yml`, `Dockerfile` moved to `install/docker/` folder
+- **Created Documentation**: Added comprehensive `install/docker/README.md` with setup and usage instructions
 - **Updated References**: All documentation and scripts updated to use new paths
 - **Build Verification**: Docker builds and services start correctly with new structure
 
@@ -29,7 +87,7 @@
 - **Testing Verified**: Config loading, saving, and persistence across restarts all working correctly
 
 #### Task 4: Documentation Updates
-- **README.md**: Updated Docker setup instructions to reference `docker/docker-compose.yml`
+- **README.md**: Updated Docker setup instructions to reference `install/docker/docker-compose.yml`
 - **CHANGELOG.md**: Added this entry documenting the reorganization
 - **Copilot Instructions**: Updated `.github/copilot-instructions.md` with new file paths
 
@@ -40,8 +98,8 @@
 - **Documentation**: Comprehensive READMEs for each organized folder
 
 ### Files Affected
-- **Moved**: `docker-compose.yml` → `docker/docker-compose.yml`
-- **Moved**: `Dockerfile` → `docker/Dockerfile`
+- **Moved**: `docker-compose.yml` → `install/docker/docker-compose.yml`
+- **Moved**: `Dockerfile` → `install/docker/Dockerfile`
 - **Moved**: `schema.prisma` → `database/schema.prisma`
 - **Moved**: `migrations/` → `database/migrations/`
 - **Moved**: `prisma/` → `database/prisma/`
@@ -49,12 +107,12 @@
 - **Moved**: `mcp_servers.json` → `config/mcp_servers.json`
 - **Moved**: `mcp_proxy_servers.json` → `config/mcp_proxy_servers.json`
 - **Updated**: `start.sh` - Prisma commands now use `database/schema.prisma`
-- **Updated**: `docker/docker-compose.yml` - Added DATABASE_URL for Docker networking
+- **Updated**: `install/docker/docker-compose.yml` - Added DATABASE_URL for Docker networking
 - **Updated**: `lib/config_handler.py` - Config loading path updated
 - **Updated**: `app.py` - Config saving path updated
 - **Updated**: `lib/mcp_tool_processor.py` - MCP config path updated
 - **Updated**: `lib/dynamic_mcp_manager.py` - MCP config path updated
-- **Created**: `docker/README.md` - Docker setup documentation
+- **Created**: `install/docker/README.md` - Docker setup documentation
 - **Created**: `database/README.md` - Database setup documentation
 - **Created**: `config/README.md` - Configuration files documentation
 - **Updated**: `README.md` - Docker commands reference new paths

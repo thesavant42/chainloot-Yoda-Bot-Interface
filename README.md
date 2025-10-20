@@ -48,14 +48,14 @@ Should be pretty close to turn-key in Docker now.
 **Solution**:
 ```bash
 # Stop and remove old containers
-docker-compose -f docker/docker-compose.yml down
+docker-compose -f install/docker/docker-compose.yml down
 
 # Or stop specific problematic containers
 docker stop <container_name>
 docker rm <container_name>
 
 # Then restart
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f install/docker/docker-compose.yml up -d
 ```
 
 ### Prisma CLI Not Found
@@ -65,7 +65,7 @@ docker-compose -f docker/docker-compose.yml up -d
 
 **Solution**: Dockerfile has been updated to include `npm install -g prisma`. Rebuild the container:
 ```bash
-docker-compose -f docker/docker-compose.yml build chainlit
+docker-compose -f install/docker/docker-compose.yml build chainlit
 ```
 
 ### GPU Not Available in Containers
@@ -113,8 +113,8 @@ deploy:
 **Solution**: The docker-compose.yml includes proper dependency management. If issues persist:
 ```bash
 # Reset database
-docker-compose -f docker/docker-compose.yml down -v
-docker-compose -f docker/docker-compose.yml up -d postgres
+docker-compose -f install/docker/docker-compose.yml down -v
+docker-compose -f install/docker/docker-compose.yml up -d postgres
 # Wait for postgres to be ready, then start other services
 ```
 
@@ -239,10 +239,10 @@ This project uses Docker Compose for easy deployment with optimized build cachin
 3. **Start all services:**
    ```bash
    # First build (may take 10-15 minutes)
-   docker-compose -f docker/docker-compose.yml up --build
+   docker-compose -f install/docker/docker-compose.yml up --build
 
    # Subsequent runs (much faster due to caching)
-   docker-compose -f docker/docker-compose.yml up
+   docker-compose -f install/docker/docker-compose.yml up
    ```
 
 4. **Access the application:**
@@ -269,24 +269,24 @@ The Docker setup includes advanced caching optimizations:
 
 ```bash
 # Start services
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f install/docker/docker-compose.yml up -d
 
 # Stop services
-docker-compose -f docker/docker-compose.yml down
+docker-compose -f install/docker/docker-compose.yml down
 
 # View logs
-docker-compose -f docker/docker-compose.yml logs -f
+docker-compose -f install/docker/docker-compose.yml logs -f
 
 # Rebuild specific service
-docker-compose -f docker/docker-compose.yml build chainlit
+docker-compose -f install/docker/docker-compose.yml build chainlit
 
 # Clean rebuild (when dependencies change)
 docker builder prune -f
-docker-compose -f docker/docker-compose.yml build --no-cache
+docker-compose -f install/docker/docker-compose.yml build --no-cache
 
 # Update services
-docker-compose -f docker/docker-compose.yml pull
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f install/docker/docker-compose.yml pull
+docker-compose -f install/docker/docker-compose.yml up -d
 ```
 
 #### Environment Configuration

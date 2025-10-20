@@ -6,7 +6,7 @@ This document provides a comprehensive checklist to validate that all Chainloot 
 
 - Docker and Docker Compose installed
 - Project cloned and configured
-- Services started with: `docker-compose -f docker/docker-compose.yml -p chainloot-yoda-bot-interface up -d`
+- Services started with: `docker-compose -f install/docker/docker-compose.yml -p chainloot-yoda-bot-interface up -d`
 
 ## Service Status Validation
 
@@ -130,7 +130,7 @@ ls -la ollama_data/models/blobs/
 
 ### If containers aren't running:
 ```bash
-docker-compose -f docker/docker-compose.yml -p chainloot-yoda-bot-interface up -d
+docker-compose -f install/docker/docker-compose.yml -p chainloot-yoda-bot-interface up -d
 ```
 
 ### If LocalStack bucket missing:
@@ -141,7 +141,7 @@ docker exec chainloot-yoda-bot-interface-localstack-1 awslocal s3 mb s3://my-buc
 ### If Ollama models missing:
 ```bash
 docker exec chainloot-yoda-bot-interface-ollama-1 ollama pull phi4-mini:latest
-docker-compose -f docker/docker-compose.yml -p chainloot-yoda-bot-interface restart chainlit
+docker-compose -f install/docker/docker-compose.yml -p chainloot-yoda-bot-interface restart chainlit
 ```
 
 ### If app shows model errors:

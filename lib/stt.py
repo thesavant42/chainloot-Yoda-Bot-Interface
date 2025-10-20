@@ -54,12 +54,12 @@ async def transcribe_audio(stt_client: OpenAI, audio_bytes: bytes, model: str = 
         Exception: If transcription fails.
     """
     logger.info(f"STT: Calling transcription API - Model: {model}, Bytes: {len(audio_bytes)}")
-    
+
     try:
         # Convert raw PCM to WAV for STT
         wav_bytes: bytes = raw_pcm_to_wav(audio_bytes, sample_rate=sample_rate)
         logger.info(f"STT: Converted {len(audio_bytes)} PCM bytes to {len(wav_bytes)} WAV bytes")
-        
+
         transcription = await stt_client.audio.transcriptions.create(
             model=model,
             file=("recorded_audio.wav", BytesIO(wav_bytes)),
@@ -87,48 +87,43 @@ async def handle_audio_chunk(chunk, audio_buffer: list[bytes] | None) -> list[by
     if chunk.isStart:
         logger.info(f"STT: on_audio_chunk START - Initializing buffer.")
         return [] # Start a new buffer
-    
+
     if audio_buffer is not None:
         audio_buffer.append(chunk.data)
     else:
         # This case should ideally not happen if chunk.isStart is handled correctly
         logger.warning("STT: Received audio chunk but audio_buffer was None. Initializing new buffer.")
         audio_buffer = [chunk.data]
-        
+
     return audio_buffer
 
-import requests
-import asyncio
-import logging
-from typing import Optional, Tuple
-
-logger = logging.getLogger(__name__)
-
-async def handle_audio_end(stt_client, audio_buffer: bytes, stt_model: str) -> str:
+async def handle_audio_end(stt_client: OpenAI, audio_buffer: list[bytes] | None, stt_model: str) -> str:
     """
-    Process audio buffer and return transcribed text.
+    Processes the recorded audio buffer, performs STT, and returns the transcription.
+
+    Args:
+        stt_client: An initialized OpenAI client configured for STT.
+        audio_buffer: The list of audio byte chunks recorded.
+        stt_model: The STT model to use for transcription.
+
+    Returns:
+        The transcribed text.
+
+    Raises:
+        Exception: If no audio data is found or transcription fails.
     """
     if not audio_buffer:
-        return ""
+        logger.warning("STT: Empty audio buffer at end of recording.")
+        raise Exception("No speech detected in audio.")
 
-    try:
-        # Prepare the request for TTS-WebUI
-        files = {
-            'file': ('audio.wav', audio_buffer, 'audio/wav'),
-            'model': (None, stt_model or 'whisper-1'),
-        }
+    # Combine all chunks into single audio bytes
+    audio_bytes: bytes = b"".join(audio_buffer)
+    logger.info(f"STT: Combined audio chunks - Total bytes: {len(audio_bytes)}")
 
-        response = await stt_client.post("/v1/audio/transcriptions", files=files)
-        response.raise_for_status()
+    # Perform transcription
+    user_text = await transcribe_audio(stt_client=stt_client, audio_bytes=audio_bytes, model=stt_model)
 
-        result = response.json()
-        text = result.get('text', '').strip()
-        logger.info(f"STT successful: '{text}'")
-        return text
-
-    except Exception as e:
-        logger.error(f"STT transcription failed: {e}")
-        return ""
+    return user_text
 
 # --- References to update ---
 # - Calls to stt_client.audio.transcriptions.create

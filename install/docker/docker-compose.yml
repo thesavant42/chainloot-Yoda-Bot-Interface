@@ -18,7 +18,7 @@ services:
     ports:
       - 4567:4566
     volumes:
-      - "../localstack-init:/etc/localstack/init/ready.d"
+      - "../install/localstack-init:/etc/localstack/init/ready.d"
     networks:
       - shared_network
 
@@ -50,7 +50,7 @@ services:
   chainlit:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: install/docker/Dockerfile
     ports:
       - "8000:8000"
       - "8443:8443"

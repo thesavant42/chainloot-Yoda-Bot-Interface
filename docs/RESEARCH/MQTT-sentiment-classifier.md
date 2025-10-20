@@ -185,16 +185,16 @@ If you'd like code snippets for Paho MQTT integration or Docker Compose updates,
 ## Implementation Handoff Notes
 
 ### Docker Compose Updates
-- Added `mosquitto` service to `docker/docker-compose.yml` using `eclipse-mosquitto:latest` image.
+- Added `mosquitto` service to `install/docker/docker-compose.yml` using `eclipse-mosquitto:latest` image.
 - Exposed port 1883 for MQTT connections.
 - Mounted `mosquitto.conf` and `passwd` files for configuration and authentication.
 
 ### Configuration Files Created
-- `docker/mosquitto.conf`: Basic config with listener on 1883, anonymous access disabled, password file reference.
-- Need to create `docker/passwd`: Run on Docker host machine:
+- `install/docker/mosquitto.conf`: Basic config with listener on 1883, anonymous access disabled, password file reference.
+- Need to create `install/docker/passwd`: Run on Docker host machine:
   ```
   docker run --rm -it eclipse-mosquitto mosquitto_passwd -c /tmp/passwd yoda
-  docker cp $(docker ps -lq):/tmp/passwd ./passwd
+  docker cp $(docker ps -lq):/tmp/passwd ./install/docker/passwd
   ```
   This generates the hashed password for user 'yoda'.
 

@@ -1,0 +1,8 @@
+# Chainlit-specific requirements
+mcp-server-time     # MCP server for time
+mcp-server-fetch    # MCP server for web fetching
+mcp-server-git      # MCP server for git operations
+wikipedia-mcp       # MCP server for Wikipedia
+prisma              # Database ORM for datalayer
+paho-mqtt           # MQTT client for emotion publishing
+av>=12.0.0          # PyAV for audio processing

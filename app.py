@@ -202,12 +202,26 @@ async def process_user_input_and_respond(user_text: str):
             except ValueError:
                 logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}, ignoring")
     
-    response = await get_client().chat.completions.create(**request_params)
-    llm_end_time = time.time()
-    logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
-    
-    # Get the response content and scrub it for safety
-    full_response = response.choices[0].message.content.strip()
+    try:
+        response = await get_client().chat.completions.create(**request_params)
+        llm_end_time = time.time()
+        logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
+        
+        # Validate response structure
+        if not response or not hasattr(response, 'choices') or not response.choices:
+            raise ValueError("Invalid response structure from LLM API")
+        
+        if not response.choices[0].message or not response.choices[0].message.content:
+            raise ValueError("Empty response content from LLM API")
+        
+        # Get the response content and scrub it for safety
+        full_response = response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        error_msg = f"Failed to get LLM response: {str(e)}"
+        logger.error(error_msg)
+        await cl.Message(content=f"Sorry, I encountered an error while processing your request: {str(e)}").send()
+        return
     persona = cl.user_session.get("chat_profile")
     results = await process_message_for_tts(full_response, persona)
     # Run message through processing pipeline

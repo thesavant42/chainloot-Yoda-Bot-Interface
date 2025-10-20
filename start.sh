@@ -2,9 +2,9 @@
 
 # Run database migrations
 echo "Running database migrations..."
-prisma migrate deploy --schema=database/schema.prisma
+prisma migrate deploy --schema=install/database/schema.prisma
 echo "Generating Prisma client..."
-prisma generate --schema=database/schema.prisma
+prisma generate --schema=install/database/schema.prisma
 
 # Default mode is https
 MODE="${1:-https}"

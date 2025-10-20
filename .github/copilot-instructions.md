@@ -126,7 +126,7 @@ npx @brave/brave-search-mcp-server  # Web search
 ### File Organization
 - **`lib/`**: Core business logic modules (config, MCP, audio processing)
 - **`docs/`**: API documentation and research notes
-- **`database/`**: Database schema and migrations (Prisma ORM)
+- **`install/database/`**: Database schema and migrations (Prisma ORM)
 - **`install/docker/`**: Docker configuration and compose files
 - **`public/`**: Static assets (avatars, themes)
 - **`submodules/`**: External dependencies (TTS-WebUI, datalayer)
@@ -145,4 +145,4 @@ npx @brave/brave-search-mcp-server  # Web search
 - `lib/dynamic_mcp_manager.py`: Modern MCP server management
 - `config.json`: Authoritative configuration source
 - `install/docker/docker-compose.yml`: Service orchestration and networking
-- `database/schema.prisma`: Data model for conversation persistence
+- `install/database/schema.prisma`: Data model for conversation persistence

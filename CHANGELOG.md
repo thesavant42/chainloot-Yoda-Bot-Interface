@@ -27,11 +27,11 @@
 - **Updated**: All documentation references to point to new location
 - **Benefits**: Groups all installation and initialization files together
 
-#### Task 4: Comprehensive Reference Updates
-- **Updated**: All documentation files, READMEs, and configuration files
-- **Updated**: Copilot instructions and development guidelines
-- **Updated**: Troubleshooting guides and service validation docs
-- **Benefits**: Maintains consistency across all project documentation
+#### Task 5: Database Directory Relocation
+- **Moved**: `database/` folder from root → `install/database/`
+- **Updated**: `start.sh` script to reference `install/database/schema.prisma`
+- **Updated**: All documentation references to point to new location
+- **Benefits**: Consolidates all installation/setup files in install directory
 
 ### Benefits
 - **Unified Installation Structure**: All installation-related files now reside in `install/` directory
@@ -44,10 +44,13 @@
 - **Removed**: `requirements.txt` (monolithic requirements file)
 - **Moved**: `docker/` → `install/docker/`
 - **Moved**: `localstack-init/` → `install/localstack-init/`
+- **Moved**: `database/` → `install/database/`
 - **Created**: `install/requirements-base.txt`, `install/requirements-chainlit.txt`, `install/requirements-tts-webui.txt`
 - **Updated**: `install/docker/Dockerfile` - Uses modular requirements
 - **Updated**: `install/docker/TTS-WebUI.Dockerfile` - Uses modular requirements
 - **Updated**: `install/docker/docker-compose.yml` - Updated paths and dockerfile references
+- **Updated**: `start.sh` - Prisma commands now use `install/database/schema.prisma`
+- **Updated**: `install/database/README.md` - All command examples updated
 - **Updated**: `README.md` - All docker-compose commands updated
 - **Updated**: `install/docker/README.md` - All examples updated
 - **Updated**: `.github/copilot-instructions.md` - File paths and commands updated
@@ -71,10 +74,10 @@
 - **Build Verification**: Docker builds and services start correctly with new structure
 
 #### Task 2: Database Files Cleanup
-- **Moved Files**: `schema.prisma`, `migrations/`, `prisma/` moved to `database/` folder
-- **Updated Scripts**: `start.sh` updated to use `database/schema.prisma` for Prisma commands
-- **Docker Configuration**: Updated `docker/docker-compose.yml` with proper `DATABASE_URL` for Docker networking
-- **Created Documentation**: Added comprehensive `database/README.md` with setup and usage instructions
+- **Moved Files**: `schema.prisma`, `migrations/`, `prisma/` moved to `install/database/` folder
+- **Updated Scripts**: `start.sh` updated to use `install/database/schema.prisma` for Prisma commands
+- **Docker Configuration**: Updated `install/docker/docker-compose.yml` with proper `DATABASE_URL` for Docker networking
+- **Created Documentation**: Added comprehensive `install/database/README.md` with setup and usage instructions
 - **Testing Verified**: Database migrations run successfully, Prisma client generates correctly, Chainlit application starts properly
 
 #### Task 3: Config Folder Cleanup
@@ -100,20 +103,20 @@
 ### Files Affected
 - **Moved**: `docker-compose.yml` → `install/docker/docker-compose.yml`
 - **Moved**: `Dockerfile` → `install/docker/Dockerfile`
-- **Moved**: `schema.prisma` → `database/schema.prisma`
-- **Moved**: `migrations/` → `database/migrations/`
-- **Moved**: `prisma/` → `database/prisma/`
+- **Moved**: `schema.prisma` → `install/database/schema.prisma`
+- **Moved**: `migrations/` → `install/database/migrations/`
+- **Moved**: `prisma/` → `install/database/prisma/`
 - **Moved**: `config.json` → `config/config.json`
 - **Moved**: `mcp_servers.json` → `config/mcp_servers.json`
 - **Moved**: `mcp_proxy_servers.json` → `config/mcp_proxy_servers.json`
-- **Updated**: `start.sh` - Prisma commands now use `database/schema.prisma`
+- **Updated**: `start.sh` - Prisma commands now use `install/database/schema.prisma`
 - **Updated**: `install/docker/docker-compose.yml` - Added DATABASE_URL for Docker networking
 - **Updated**: `lib/config_handler.py` - Config loading path updated
 - **Updated**: `app.py` - Config saving path updated
 - **Updated**: `lib/mcp_tool_processor.py` - MCP config path updated
 - **Updated**: `lib/dynamic_mcp_manager.py` - MCP config path updated
 - **Created**: `install/docker/README.md` - Docker setup documentation
-- **Created**: `database/README.md` - Database setup documentation
+- **Created**: `install/database/README.md` - Database setup documentation
 - **Created**: `config/README.md` - Configuration files documentation
 - **Updated**: `README.md` - Docker commands reference new paths
 - **Updated**: `CHANGELOG.md` - Added this reorganization entry

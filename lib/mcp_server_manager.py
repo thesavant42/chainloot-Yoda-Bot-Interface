@@ -44,7 +44,7 @@ class MCPServerManager:
                 await self._setup_sequential_thinking_server()
                 await self._setup_youtube_transcript_server()
                 await self._setup_wikipedia_server()
-                # Note: Hugging Face server uses HTTP transport, will implement separately
+                await self._setup_proxy_servers()  # Add proxy servers from config
                 
                 self.initialized = True
                 logging.info(f"MCP initialization complete. Available tools: {list(self.tools.keys())}")
@@ -343,6 +343,108 @@ class MCPServerManager:
         except Exception as e:
             logging.error(f"Failed to setup Wikipedia server: {e}")
             # Don't raise - continue with other servers
+    
+    async def _setup_proxy_servers(self):
+        """Setup proxy servers from mcp_proxy_servers.json"""
+        try:
+            import json
+            import os
+            
+            proxy_config_path = "config/mcp_proxy_servers.json"
+            if not os.path.exists(proxy_config_path):
+                logging.info("No proxy server config found, skipping proxy servers")
+                return
+                
+            with open(proxy_config_path, 'r') as f:
+                proxy_config = json.load(f)
+                
+            # Environment variable substitution
+            def substitute_env_vars(obj):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                            env_var = value[2:-1]
+                            obj[key] = os.environ.get(env_var, "")
+                        elif isinstance(value, (dict, list)):
+                            substitute_env_vars(value)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        substitute_env_vars(item)
+            
+            substitute_env_vars(proxy_config)
+            
+            mcp_servers = proxy_config.get("mcpServers", {})
+            if not mcp_servers:
+                logging.info("No proxy servers defined in config")
+                return
+                
+            logging.info(f"Setting up {len(mcp_servers)} proxy servers from config")
+            
+            for server_name, server_config in mcp_servers.items():
+                try:
+                    await self._setup_single_proxy_server(server_name, server_config)
+                except Exception as e:
+                    logging.error(f"Failed to setup proxy server {server_name}: {e}")
+                    # Continue with other servers
+                    
+        except Exception as e:
+            logging.error(f"Failed to setup proxy servers: {e}")
+    
+    async def _setup_single_proxy_server(self, server_name: str, server_config: dict):
+        """Setup a single proxy server using mcp-proxy"""
+        try:
+            env = server_config.get("env", {})
+            sse_url = env.get("SSE_URL")
+            api_token = env.get("API_ACCESS_TOKEN")
+            
+            if not sse_url:
+                raise ValueError(f"No SSE_URL specified for proxy server {server_name}")
+                
+            # Set up mcp-proxy command
+            command = "mcp-proxy"
+            args = [sse_url]
+            
+            # Add API token to environment if provided
+            proxy_env = os.environ.copy()
+            if api_token:
+                proxy_env["API_ACCESS_TOKEN"] = api_token
+                
+            logging.info(f"Initializing proxy server {server_name}: {command} {' '.join(args)}")
+            
+            # Set up stdio connection
+            stdio_context = stdio_client(StdioServerParameters(
+                command=command,
+                args=args,
+                env=proxy_env
+            ))
+            read, write = await stdio_context.__aenter__()
+            
+            # Store context for cleanup
+            self.session_contexts[server_name] = stdio_context
+            
+            # Create session
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+            
+            # Store session
+            self.sessions[server_name] = session
+            
+            # List available tools
+            tool_list = await session.list_tools()
+            
+            for tool in tool_list.tools:
+                self.tools[tool.name] = {
+                    "session_name": server_name,
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                
+            logging.info(f"Proxy server {server_name} initialized with tools: {[t.name for t in tool_list.tools]}")
+            
+        except Exception as e:
+            logging.error(f"Failed to setup proxy server {server_name}: {e}")
+            raise
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         """Call a specific tool"""

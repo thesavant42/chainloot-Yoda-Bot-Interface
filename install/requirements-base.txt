@@ -6,6 +6,7 @@ python-dateutil     #
 python-dotenv       # Environment variables
 openai              # OpenAI API client
 transformers        # ML transformers
+torch               # PyTorch for ML models
 asyncpg             # PostgreSQL async client
 boto3               # AWS SDK
 pyjson              # JSON utilities

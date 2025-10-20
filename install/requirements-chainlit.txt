@@ -6,3 +6,4 @@ wikipedia-mcp       # MCP server for Wikipedia
 prisma              # Database ORM for datalayer
 paho-mqtt           # MQTT client for emotion publishing
 av>=12.0.0          # PyAV for audio processing
+mcp-proxy

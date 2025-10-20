@@ -314,7 +314,7 @@ If you prefer not to use Docker, you'll need to set up each component manually:
 1. **LM Studio**: Run locally on port 1234
 2. **TTS-WebUI**: Run locally on ports 7778/7770/3000
 3. **PostgreSQL**: Local database setup
-4. **Python Environment**: Install dependencies from `requirements.txt`
+4. **Python Environment**: Install dependencies from `install/requirements-*.txt` files
 
 See the individual component documentation for manual setup instructions.
 

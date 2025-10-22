@@ -8,5 +8,7 @@
         "c:\\Users\\jbras\\AppData\\Roaming\\Code\\User\\globalStorage\\wmerkens.vscode-circuitpython-v2\\bundle\\20250501\\adafruit-circuitpython-bundle-py-20250501\\lib",
         "c:\\Users\\jbras\\Desktop\\chainloot\\libArchive\\libstubs",
         "c:\\Users\\jbras\\AppData\\Roaming\\Code\\User\\globalStorage\\padgettholdings.circuitpythonsync\\stubs\\circuitpython_stubs-10.0.0"
-    ]
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }

@@ -4,6 +4,6 @@ mcp-server-fetch    # MCP server for web fetching
 mcp-server-git      # MCP server for git operations
 wikipedia-mcp       # MCP server for Wikipedia
 prisma              # Database ORM for datalayer
-paho-mqtt           # MQTT client for emotion publishing
+paho-mqtt>=1.6.0           # MQTT client for emotion publishing (MQTT 5.0 support)
 av>=12.0.0          # PyAV for audio processing
 mcp-proxy

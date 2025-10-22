@@ -187,21 +187,21 @@ If Master Yoda is online,
       - MQTT 5.0
       - Mosquitto broker
 
-- [ ] **Task 1.1: Upgrade Paho MQTT Client to MQTT 5.0**
-  - [ ] Update `requirements.txt` to use `paho-mqtt>=1.6.0` (supports MQTTv5)
-  - [ ] Modify `lib/mqtt_publisher.py` to use `mqtt.CallbackAPIVersion.VERSION2` and MQTTv5 protocol
+- [x] **Task 1.1: Upgrade Paho MQTT Client to MQTT 5.0**
+  - [x] Update `requirements.txt` to use `paho-mqtt>=1.6.0` (supports MQTTv5)
+  - [x] Modify `lib/mqtt_publisher.py` to use `mqtt.CallbackAPIVersion.VERSION2` and MQTTv5 protocol
   - [ ] Test basic connect/publish/subscribe with MQTT 5.0
   - [ ] Acceptance: Client connects to Mosquitto using MQTT 5.0 protocol
 
-- [ ] **Task 1.2: Configure Mosquitto for MQTT 5.0**
-  - [ ] Update `install/docker/mosquitto.conf` to enable MQTT 5.0 features
-  - [ ] Add `persistent_client_expiration 14d` to prevent stale session buildup
+- [x] **Task 1.2: Configure Mosquitto for MQTT 5.0**
+  - [x] Update `install/docker/mosquitto.conf` to enable MQTT 5.0 features
+  - [x] Add `persistent_client_expiration 14d` to prevent stale session buildup
   - [ ] Restart Mosquitto service and verify MQTT 5.0 support
   - [ ] Acceptance: Mosquitto accepts MQTT 5.0 connections and cleans up expired sessions
 
 - [ ] **Task 1.3: Implement Message Expiry Interval**
-  - [ ] Add `expiry_interval` parameter to `MQTTPublisher.publish()` method
-  - [ ] Set default expiry intervals: 300s (5min) for emotions, 60s for status
+  - [x] Add `expiry_interval` parameter to `MQTTPublisher.publish()` method
+  - [x] Set default expiry intervals: 300s (5min) for emotions, 60s for status
   - [ ] Test that expired messages are automatically cleaned up
   - [ ] Acceptance: Retained messages expire and disappear from broker after interval
 
@@ -296,7 +296,7 @@ If Master Yoda is online,
    1. Use MCP Tools, update your documentation via context7
       - MQTT 5.0
       - Mosquitto broker
-      
+
 - [ ] **Task 5.1: Update Application Startup**
   - [ ] Modify `app.py` to initialize `IdleManager` on startup
   - [ ] Start background threads for heartbeat and idle monitoring

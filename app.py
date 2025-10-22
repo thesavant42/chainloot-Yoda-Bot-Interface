@@ -738,13 +738,20 @@ import atexit
 import signal
 
 async def cleanup_on_exit():
-    """Clean up MCP resources on app shutdown"""
+    """Clean up MCP resources and MQTT on app shutdown"""
     try:
         active_manager = get_active_mcp_manager()
         await active_manager.cleanup()
         logger.info("MCP resources cleaned up successfully")
     except Exception as e:
         logger.error(f"Error cleaning up MCP resources: {e}")
+    
+    try:
+        mqtt_pub = get_mqtt_publisher()
+        mqtt_pub.disconnect()
+        logger.info("MQTT disconnected successfully")
+    except Exception as e:
+        logger.error(f"Error disconnecting MQTT: {e}")
 
 def signal_handler(signum, frame):
     """Handle shutdown signals"""

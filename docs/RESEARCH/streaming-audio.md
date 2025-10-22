@@ -106,3 +106,21 @@ async def audio_start(sid):
         await context.emitter.update_audio_connection(connection_state)
 ```
 
+I've just discovered this project: https://github.com/geo-tp/M5Cardputer-Audio-Stream-Server
+
+Q: Does this project meet our streaming audio criteria? Use the GitHub MCP to pull the README.md and if it seems like it will work, reivew the application source.
+A: The M5Cardputer Audio Stream Server captures microphone input from an M5Cardputer device and streams it over Wi-Fi to a web page for remote listening. It uses HTTP to serve a continuous WAV audio stream at 16kHz sample rate.
+
+This does not meet our Chainlit streaming audio criteria, which focuses on WebSocket-based bidirectional streaming of PCM16 audio chunks for AI-generated responses (using WavStreamPlayer and audio_chunk events). Instead, this project streams live microphone input via HTTP WAV to a browser player, making it suitable for audio input capture rather than AI response playback.
+
+While it demonstrates audio streaming capabilities, it operates in the opposite direction (device-to-web input streaming) compared to Chainlit's output-focused streaming system.
+
+Q: How close is the app to working with the current chainloot setup?
+A: The app is not directly compatible with Chainloot's current setup. Chainloot uses Chainlit's WebSocket-based audio streaming for AI responses and browser microphone input via WebSocket for STT processing.
+
+To integrate this hardware audio streaming:
+- The M5Cardputer's HTTP WAV stream would need to be adapted to Chainloot's WebSocket audio chunk format
+- Chainloot's STT pipeline (Whisper) could potentially consume the audio stream, but would require modifications to accept HTTP streams instead of WebSocket chunks
+- The current browser-based mic input would need to be replaced or supplemented with the hardware device
+
+Significant development work would be needed to bridge the HTTP streaming protocol with Chainloot's WebSocket-based audio handling. The project could serve as a foundation for hardware-accelerated audio input, but isn't plug-and-play with the existing Chainlit/Chainloot architecture.

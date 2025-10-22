@@ -1,0 +1,3 @@
+# Ollama-specific requirements for health monitoring and MQTT reporting
+paho-mqtt>=1.6.0    # MQTT client for health status reporting
+python-dotenv       # Environment variable loading

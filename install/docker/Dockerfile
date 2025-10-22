@@ -75,7 +75,7 @@ ENV PATH="/root/.local/bin:/usr/local/bin:$PATH"
 RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser /app
 
 # Expose ports (8000 for HTTP, 8443 for HTTPS; Chainlit default is 8000)
-EXPOSE 8000 8443
+EXPOSE 8443
 
 # Health check to ensure the HTTPS server is running (default mode)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

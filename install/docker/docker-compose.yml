@@ -88,11 +88,14 @@ services:
       - shared_network
 
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: ..
+      dockerfile: docker/Ollama.Dockerfile
     ports:
       - "11434:11434"
     volumes:
       - ../../ollama_data:/root/.ollama
+      - ../../ollama_app:/app
     env_file:
       - ../../.env
     environment:

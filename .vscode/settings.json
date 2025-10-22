@@ -10,5 +10,15 @@
         "c:\\Users\\jbras\\AppData\\Roaming\\Code\\User\\globalStorage\\padgettholdings.circuitpythonsync\\stubs\\circuitpython_stubs-10.0.0"
     ],
     "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "vsmqtt.brokerProfiles": [
+        {
+            "name": "localhost",
+            "host": "localhost",
+            "port": 1883,
+            "clientId": "vsmqtt_client_737e",
+            "username": "yoda",
+            "password": "yoda"
+        }
+    ]
 }

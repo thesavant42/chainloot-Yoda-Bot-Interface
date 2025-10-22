@@ -1,7 +1,7 @@
 {
     "lm_studio_base_url": "http://192.168.1.98:1234/v1",
     "api_key": "lm-studio",
-    "last_used_model": "phi4-mini:latest",
+    "last_used_model": "hf.co/unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M",
     "logging_enabled": false,
     "tts_base_url": "http://tts-webui:7778",
     "tts_model_name": "chatterbox",
@@ -36,7 +36,7 @@
     "character": null,
     "reasoning_enabled": false,
     "profile_voices": {
-        "Yoda": "voices/chatterbox/18.wav",
+        "Yoda": "voices/chatterbox/17.wav",
         "AI": "voices/chatterbox/3po.wav",
         "Stark": "voices/chatterbox/stark.wav"
     },

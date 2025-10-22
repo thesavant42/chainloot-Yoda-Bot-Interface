@@ -665,7 +665,7 @@ async def on_chat_start():
 
     # Publish online status to MQTT
     mqtt_publisher = get_mqtt_publisher()
-    mqtt_publisher.publish_status(chat_profile_name.lower(), "online")
+    mqtt_publisher.publish_status(chat_profile_name.lower(), "online", expiry_interval=60)
 
 @cl.on_chat_end
 async def on_chat_end():

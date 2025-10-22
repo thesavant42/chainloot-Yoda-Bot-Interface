@@ -199,11 +199,14 @@ If Master Yoda is online,
   - [ ] Restart Mosquitto service and verify MQTT 5.0 support
   - [ ] Acceptance: Mosquitto accepts MQTT 5.0 connections and cleans up expired sessions
 
-- [ ] **Task 1.3: Implement Message Expiry Interval**
+- [x] **Task 1.3: Implement Message Expiry Interval**
   - [x] Add `expiry_interval` parameter to `MQTTPublisher.publish()` method
   - [x] Set default expiry intervals: 300s (5min) for emotions, 60s for status
-  - [ ] Test that expired messages are automatically cleaned up
-  - [ ] Acceptance: Retained messages expire and disappear from broker after interval
+  - [x] Update MQTT client to use MQTT v5.0 protocol
+  - [x] Set MessageExpiryInterval property on PUBLISH packets
+  - [x] Update calling code to pass expiry intervals
+  - [x] Corrected test logic to use separate clients for proper expiry validation
+  - [x] Acceptance: Retained messages expire and disappear from broker after interval
 
 **Dependencies:**
 - **Task 1.1 must complete before Tasks 1.3, 2.1, 2.2**

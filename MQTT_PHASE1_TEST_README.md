@@ -16,7 +16,7 @@ Before running the script, set these environment variables:
 export MQTT_BROKER=your_broker_host  # e.g., localhost, 192.168.1.98, or mosquitto
 export MQTT_PORT=1883                 # MQTT broker port
 export MQTT_USERNAME=yoda             # MQTT username
-export MQTT_PASSWORD=your_password    # MQTT password (required)
+export MQTT_PASSWORD=yoda    # MQTT password (required)
 ```
 
 ## Running the Tests

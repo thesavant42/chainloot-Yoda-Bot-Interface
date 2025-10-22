@@ -75,7 +75,7 @@ async def process_message_for_tts(message: str, persona: str) -> list[dict]:
         
         # Publish to MQTT
         mqtt_publisher = get_mqtt_publisher()
-        mqtt_publisher.publish_emotion(persona.lower(), aggregated_sentiment)
+        mqtt_publisher.publish_emotion(persona.lower(), aggregated_sentiment, expiry_interval=300)
     
     return processed_results
 

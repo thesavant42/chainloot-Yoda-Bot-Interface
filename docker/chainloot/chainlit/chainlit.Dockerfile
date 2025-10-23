@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y gcc g++ libffi-dev libssl-dev git cmake
     rm -rf /var/lib/apt/lists/*
 
 # Copy the pip configuration file
-COPY ../pip.conf /etc/pip.conf
+COPY ./pip.conf /etc/pip.conf
 
 # Set work directory
 WORKDIR /app
@@ -17,7 +17,8 @@ WORKDIR /app
 COPY ./requirements-chainlit.txt ./
 RUN pip install -r requirements-chainlit.txt
 # Install GPU PyTorch for sentiment analysis (Chainlit has GPU access)
-RUN pip install torch --index-url https://download.pytorch.org/whl/cu128
+RUN pip install torch 
+#--index-url https://download.pytorch.org/whl/cu128
 
 # Install uv for MCP servers (required for MCP tool usage as per README)
 RUN pip install uv

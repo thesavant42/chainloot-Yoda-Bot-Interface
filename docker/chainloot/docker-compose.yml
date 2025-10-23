@@ -54,7 +54,8 @@ services:
 
   chainlit:
     build:
-      dockerfile: ./chainlit/chainlit.Dockerfile
+      context: ./chainlit
+      dockerfile: ./chainlit.Dockerfile
     ports:
       - "8443:8443"
     volumes:

@@ -68,7 +68,7 @@ from lib.mcp_server_manager import mcp_manager
 from lib.dynamic_mcp_manager import dynamic_mcp_manager
 from lib.mcp_tool_processor import tool_processor
 from chainlit.config import (
-    ChainlitConfigOverrides,
+    #ChainlitConfigOverrides,
     FeaturesSettings,
     McpFeature,
     UISettings,

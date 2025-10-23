@@ -14,7 +14,6 @@ spacy==3.6.1        # NLP library
 paho-mqtt>=1.6.0           # MQTT client for emotion publishing (MQTT 5.0 support)
 
 # TTS-WebUI-specific requirements
---extra-index-url https://tts-webui.github.io/extensions-index/
 tts_webui_extension.cuda_toolkit     # cuda toolkit
 tts-webui-extension-kokoro     # TTS extension
 tts-webui-extension-rvc        # Voice conversion extension

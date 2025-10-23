@@ -24,7 +24,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
-
+docker/chainloot/tts-webui/tts_models/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

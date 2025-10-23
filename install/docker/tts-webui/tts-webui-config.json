@@ -11,8 +11,8 @@
   "gradio_interface_options": {
     "inline": false,
     "inbrowser": true,
-    "share": false,
-    "debug": false,
+    "share": true,
+    "debug": true,
     "max_threads": 40,
     "auth": null,
     "auth_message": null,
@@ -25,7 +25,7 @@
     "ssl_keyfile": null,
     "ssl_certfile": null,
     "ssl_keyfile_password": null,
-    "ssl_verify": true,
+    "ssl_verify": false,
     "quiet": true,
     "show_api": true,
     "_frontend": true

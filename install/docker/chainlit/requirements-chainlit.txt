@@ -1,0 +1,25 @@
+# Base requirements - shared by all containers
+requests            # HTTP library
+python-dateutil     #
+python-dotenv       # Environment variables
+openai              # OpenAI API client
+transformers        # ML transformers
+# torch             # PyTorch - installed with GPU support in TTS-WebUI.Dockerfile, not needed in Chainlit
+asyncpg             # PostgreSQL async client
+boto3               # AWS SDK
+pyjson              # JSON utilities
+beautifulsoup4      # HTML parsing
+Cython              # C extensions
+spacy==3.6.1        # NLP library
+paho-mqtt>=1.6.0           # MQTT client for emotion publishing (MQTT 5.0 support)
+
+# Chainlit-specific requirements
+mcp-server-time     # MCP server for time
+mcp-server-fetch    # MCP server for web fetching
+mcp-server-git      # MCP server for git operations
+wikipedia-mcp       # MCP server for Wikipedia
+prisma              # Database ORM for datalayer
+av>=12.0.0          # PyAV for audio processing
+mcp-proxy
+chainlit            # Core Requirement
+mcp                 # MCP core

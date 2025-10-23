@@ -2,11 +2,11 @@ services:
   postgres:
     image: postgres:16
     volumes:
-      - ../.data/postgres:/var/lib/postgresql/data
+      - ./databse/.data/postgres:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=chainlit
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
     networks:
@@ -22,29 +22,24 @@ services:
     ports:
       - 4567:4566
     volumes:
-      - "../install/localstack-init:/etc/localstack/init/ready.d"
+      - "./localstack/localstack-init:/etc/localstack/init/ready.d"
     env_file:
-      - ../../.env
+      - ./localstack/localstack.env
     networks:
       - shared_network
 
   tts-webui:
     build:
-      context: ..
-      dockerfile: docker/TTS-WebUI.Dockerfile
+      dockerfile: ./tts-webui/TTS-WebUI.Dockerfile
     ports:
       - "7778:7778"
       - "7770:7770"
       - "3000:3000"
     volumes:
-      - tts_models:/root/.cache/huggingface
-      - /c/Users/jbras/GitHub/chainloot-Yoda-Bot-Interface/tts_voices:/app/tts-webui/voices
+      - ./tts-webui/tts_models:/root/.cache/huggingface
+      - ./tts-webui/tts_voices:/app/tts-webui/voices
     env_file:
-      - ../../.env
-    environment:
-      - TTS_PORT=7778
-      - UI_PORT=3000
-      - STT_BASE_URL=http://tts-webui:7778
+      - ./tts-webui/tts-webui.env
     deploy:
       resources:
         reservations:
@@ -57,21 +52,15 @@ services:
 
   chainlit:
     build:
-      context: ../..
-      dockerfile: install/docker/Dockerfile
+      dockerfile: ./chainlit/chainlit.Dockerfile
     ports:
-      - "8000:8000"
       - "8443:8443"
     volumes:
-      - ../../:/app
-      - ../../ssl:/app/ssl
-      - ../../uploads:/app/uploads
+      - ./chainlit/:/app
+      - ./chainlit/ssl:/app/ssl
+      - ./chainlit/uploads:/app/uploads
     env_file:
-      - ../../.env
-    environment:
-      - TTS_BASE_URL=http://tts-webui:7778
-      - STT_BASE_URL=http://tts-webui:7778
-      - DATABASE_URL=postgresql://root:root@postgres:5432/chainlit
+      - ./chainlit/chainlit.env
     depends_on:
       - postgres
       - localstack
@@ -89,15 +78,14 @@ services:
 
   ollama:
     build:
-      context: ..
-      dockerfile: docker/Ollama.Dockerfile
+      dockerfile: ./ollama/Ollama.Dockerfile
     ports:
       - "11434:11434"
     volumes:
-      - ../../ollama_data:/root/.ollama
-      - ../../ollama_app:/app
+      - ./ollama/ollama_data:/root/.ollama
+      - ./ollama/ollama_app:/app
     env_file:
-      - ../../.env
+      - ./ollama//Ollama.env
     environment:
       - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-4096}
     deploy:
@@ -115,8 +103,8 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./passwd:/mosquitto/config/passwd
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/passwd:/mosquitto/config/passwd
     networks:
       - shared_network
 

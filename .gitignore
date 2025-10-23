@@ -28,7 +28,8 @@ docker/chainloot/tts-webui/tts_models/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
+docs/IN_PROGRESS_TASKS/mqtt_feels/feels-test-app/yoda/
+docs/IN_PROGRESS_TASKS/mqtt_feels/feels-test-app/stark/
 # Unit test / coverage reports
 htmlcov/
 .tox/

@@ -2,7 +2,9 @@ services:
   postgres:
     image: postgres:16
     volumes:
-      - ./databse/.data/postgres:/var/lib/postgresql/data
+      - ./database/.data/postgres:/var/lib/postgresql/data
+    env_file:
+      - ./localstack/localstack.env
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

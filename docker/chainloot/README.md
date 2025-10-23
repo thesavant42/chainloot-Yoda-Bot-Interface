@@ -17,7 +17,6 @@ This document supercedes all others that conflict. This is the source of truth f
  - Each container gets their own requirements.txt file, and should not be concerned with sharing package requirements.
  - Do not restructure this folder
  - Do not create new requirements.txt
- - 
 
 ### Container Folders
 

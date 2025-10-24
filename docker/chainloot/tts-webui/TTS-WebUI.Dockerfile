@@ -33,19 +33,20 @@ RUN git clone https://github.com/rsxdalv/tts-webui.git /app/tts-webui
 
 # Set working directory to the cloned repo
 WORKDIR /app/tts-webui
+# Copy requirements files
+COPY tts-webui/requirements-tts-webui.txt /app/tts-webui/requirements-tts-webui.txt 
+
 
 # Install all requirements
 RUN pip3 install --no-cache-dir torch==$TORCH_VERSION -r requirements-tts-webui.txt
 
-RUN pip install tts-webui-extension.bark_voice_clone>=0.0.1 --extra-index-url --index-url http://192.168.1.98:9191/index/
-RUN pip install tts-webui-extension.rvc>=0.0.3 --extra-index-url --index-url http://192.168.1.98:9191/index/
-RUN pip install tts-webui-extension.audiocraft>=0.0.2 --extra-index-url --index-url http://192.168.1.98:9191/index/
-RUN pip install tts-webui-extension.styletts2>=0.1.0 --extra-index-url --index-url http://192.168.1.98:9191/index/
-RUN pip install tts-webui-extension.vall_e_x>=0.1.0 --extra-index-url --index-url http://192.168.1.98:9191/index/
-# RUN pip install tts-webui-extension.stable_audio>=0.1.1 --extra-index-url --index-url http://192.168.1.98:9191/index/
+RUN pip install tts-webui-extension.bark_voice_clone>=0.0.1 --index-url http://192.168.1.98:9191/index/
+RUN pip install tts-webui-extension.rvc>=0.0.3 --index-url http://192.168.1.98:9191/index/
+RUN pip install tts-webui-extension.audiocraft>=0.0.2 --index-url http://192.168.1.98:9191/index/
+RUN pip install tts-webui-extension.styletts2>=0.1.0 --index-url http://192.168.1.98:9191/index/
+RUN pip install tts-webui-extension.vall_e_x>=0.1.0 --index-url http://192.168.1.98:9191/index/
+# RUN pip install tts-webui-extension.stable_audio>=0.1.1 --index-url http://192.168.1.98:9191/index/
 
-# Copy requirements files
-COPY tts-webui/requirements-tts-webui.txt /app/tts-webui/requirements-tts-webui.txt 
 # Install all requirements (torch already installed above)
 RUN pip3 install -r /app/tts-webui/requirements-tts-webui.txt
 

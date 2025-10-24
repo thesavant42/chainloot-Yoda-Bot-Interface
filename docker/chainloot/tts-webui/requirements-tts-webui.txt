@@ -6,7 +6,7 @@ python-dotenv       # Environment variables
 # torch==2.7.0+cu128         # PyTorch with CUDA 12.8 support (from pip cache proxy) ((Moved to Dockerfile))
 # torchaudio==2.7.0+cu128    # Audio processing with CUDA support ((Moved to Dockerfile))
 # torchvision==0.22.0+cu128  # Computer vision with CUDA support ((Moved to Dockerfile))
-transformers==4.44.2       # ML transformers (pinned for compatibility with PyTorch 2.7.0)
+#transformers==4.44.2       # ML transformers (pinned for compatibility with PyTorch 2.7.0)
 
 openai              # OpenAI API client
 # TTS-WebUI-specific requirements
@@ -29,6 +29,11 @@ nvidia-ml-py
 hydra-core==1.3.2
 accelerate>=0.33.0
 
+#av>=12.0.0          # PyAV for audio processing
+#pydub               # Audio processing
+#librosa             # Audio analysis
+#soundfile           # Audio file I/O
+
 # Core Extensions
 tts_webui_extension.bark>=0.0.5
 tts_webui_extension.tortoise_tts>=0.0.3
@@ -39,7 +44,7 @@ tts_webui_extension.vocos>=0.0.3
 tts_webui_extension.openai_tts_api>=0.14.0
 #
 tts_webui_extension.cuda_toolkit     # cuda toolkit
-tts-webui-extension-kokoro     # TTS extension
+#tts-webui-extension-kokoro     # TTS extension
 tts-webui-extension-rvc        # Voice conversion extension
 tts-webui-extension-chatterbox # TTS extension
 tts-webui-extension-openai-tts-api # OpenAI TTS API extension
@@ -48,32 +53,10 @@ gradio-goodtabs>=0.0.5
 gradio-goodtab>=0.0.5
 gradio-iconbutton>=0.0.1
 
-av>=12.0.0          # PyAV for audio processing
-
-# asyncpg             # PostgreSQL async client
-# boto3               # AWS SDK
-# pyjson              # JSON utilities
-# beautifulsoup4      # HTML parsing
-# Cython              # C extensions
-# spacy==3.6.1        # NLP library
-
 # Monitoring requirements
+
 psutil==5.9.0
-aiohttp==3.9.1
+aiohttp==3.11.1
 gputil==1.4.0
+docker>=7.1.0
 paho-mqtt>=1.6.0    # MQTT client for emotion publishing (MQTT 5.0 support)
-
-
-av>=12.0.0          # PyAV for audio processing
-pydub               # Audio processing
-librosa             # Audio analysis
-soundfile           # Audio file I/O
-ffmpeg-python       # Python ffmpeg bindings for extensions
-matplotlib          # Plotting library for waveform visualization
-
-
-## MCP
-#mcp                 # MCP core
-#mcp-proxy
-## Datalayer
-#prisma              # Database ORM for datalayer

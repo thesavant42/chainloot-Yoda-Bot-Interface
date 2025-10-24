@@ -36,7 +36,6 @@ This project uses Docker Compose for easy deployment with optimized build cachin
    ```
 
 4. **Access the application:**
-   - **Main App (HTTP):** http://localhost:8000
    - **Main App (HTTPS):** https://localhost:8443
    - **TTS-WebUI (API):** http://localhost:7778
    - **TTS-WebUI (Gradio UI):** http://localhost:7770
@@ -46,6 +45,8 @@ This project uses Docker Compose for easy deployment with optimized build cachin
 
 The Docker setup includes advanced caching optimizations:
 
+- **Local PIP package caching via proxypi**
+  - requires pip.conf be installed, speeds up installations tremendously
 - **Layer Caching**: Heavy installations (Python packages, MCP servers, ML models) happen before code copy
 - **Cache Mounts**: Persistent caches for pip, npm, uv, and Hugging Face downloads
 - **BuildKit**: Parallel builds and advanced caching features

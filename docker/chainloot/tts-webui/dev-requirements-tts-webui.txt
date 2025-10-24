@@ -1,0 +1,36 @@
+# Base requirements - shared by all containers
+requests            # HTTP library
+python-dateutil     #
+python-dotenv       # Environment variables
+openai              # OpenAI API client
+
+# PyTorch with CUDA - MUST be installed first to prevent CPU version conflicts
+torch==2.7.0+cu128         # PyTorch with CUDA 12.8 support (from pip cache proxy)
+torchaudio==2.7.0+cu128    # Audio processing with CUDA support
+torchvision==0.22.0+cu128  # Computer vision with CUDA support 
+transformers==4.44.2       # ML transformers (pinned for compatibility with PyTorch 2.7.0)
+asyncpg             # PostgreSQL async client
+boto3               # AWS SDK
+pyjson              # JSON utilities
+beautifulsoup4      # HTML parsing
+Cython              # C extensions
+spacy==3.6.1        # NLP library
+paho-mqtt>=1.6.0           # MQTT client for emotion publishing (MQTT 5.0 support)
+
+# TTS-WebUI-specific requirements
+tts_webui_extension.cuda_toolkit     # cuda toolkit
+tts-webui-extension-kokoro     # TTS extension
+tts-webui-extension-rvc        # Voice conversion extension
+tts-webui-extension-chatterbox # TTS extension
+tts-webui-extension-openai-tts-api # OpenAI TTS API extension
+mcp-proxy
+# fairseq              # Sequence modeling - REMOVED: Build issues, functionality covered by transformers
+gradio-goodtab       # Gradio UI components
+gradio-goodtabs      # Gradio UI components
+gradio-iconbutton    # Gradio UI components
+av>=12.0.0          # PyAV for audio processing
+pydub               # Audio processing
+librosa             # Audio analysis
+soundfile           # Audio file I/O
+ffmpeg-python       # Python ffmpeg bindings for extensions
+matplotlib          # Plotting library for waveform visualization

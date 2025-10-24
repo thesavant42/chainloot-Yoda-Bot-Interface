@@ -25,12 +25,8 @@ RUN npm --version
 ENV TORCH_VERSION=2.7.0
 
 ENV PATH="/root/.cargo/bin:$PATH"
-RUN pip install --upgrade pip setuptools wheel
-
-# Copy the pip configuration file
 COPY ../pip.conf /etc/pip.conf
-# add xformers?
-RUN pip install setuptools torch==$TORCH_VERSION torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN pip install --upgrade pip setuptools wheel
 
 # Set working directory
 WORKDIR /app

@@ -16,9 +16,7 @@ WORKDIR /app
 # Copy requirements and install Python dependencies
 COPY ./requirements-chainlit.txt ./
 RUN pip install -r requirements-chainlit.txt
-# Install GPU PyTorch for sentiment analysis (Chainlit has GPU access)
-RUN pip install torch 
-#--index-url https://download.pytorch.org/whl/cu128
+
 
 # Install uv for MCP servers (required for MCP tool usage as per README)
 RUN pip install uv

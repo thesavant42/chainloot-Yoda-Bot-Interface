@@ -3,30 +3,31 @@ requests            # HTTP library
 python-dateutil     #
 python-dotenv       # Environment variables
 openai              # OpenAI API client
-transformers        # ML transformers
-# torch             # PyTorch - installed with GPU support in TTS-WebUI.Dockerfile, not needed in Chainlit
+torch==2.7.0+cu128         # PyTorch with CUDA 12.8 support (from pip cache proxy)
+torchaudio==2.7.0+cu128    # Audio processing with CUDA support
+torchvision==0.22.0+cu128  # Computer vision with CUDA support
+transformers==4.44.2       # ML transformers (pinned for compatibility with PyTorch 2.7.0)
 asyncpg             # PostgreSQL async client
 boto3               # AWS SDK
 pyjson              # JSON utilities
 beautifulsoup4      # HTML parsing
 Cython              # C extensions
 spacy==3.6.1        # NLP library
-paho-mqtt>=1.6.0           # MQTT client for emotion publishing (MQTT 5.0 support)
+paho-mqtt>=1.6.0    # MQTT client for emotion publishing (MQTT 5.0 support)
 
-# TTS-WebUI-specific requirements
-tts_webui_extension.cuda_toolkit     # cuda toolkit
-tts-webui-extension-kokoro     # TTS extension
-tts-webui-extension-rvc        # Voice conversion extension
-tts-webui-extension-chatterbox # TTS extension
-tts-webui-extension-openai-tts-api # OpenAI TTS API extension
-mcp-proxy
-fairseq              # Sequence modeling
-gradio-goodtab       # Gradio UI components
-gradio-goodtabs      # Gradio UI components
-gradio-iconbutton    # Gradio UI components
+# Chainlit-specific requirements
+#mcp-proxy
+#mcp-server-time     # MCP server for time
+#mcp-server-fetch    # MCP server for web fetching
+#mcp-server-git      # MCP server for git operations
+#wikipedia-mcp       # MCP server for Wikipedia
+prisma              # Database ORM for datalayer
 av>=12.0.0          # PyAV for audio processing
-pydub               # Audio processing
-librosa             # Audio analysis
-soundfile           # Audio file I/O
-ffmpeg-python       # Python ffmpeg bindings for extensions
-matplotlib          # Plotting library for waveform visualization
+
+
+mcp                 # MCP core
+
+# Monitoring requirements
+psutil==5.9.0
+aiohttp==3.9.1
+gputil==1.4.0

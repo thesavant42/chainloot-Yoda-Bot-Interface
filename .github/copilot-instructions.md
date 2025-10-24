@@ -155,6 +155,7 @@ npx @brave/brave-search-mcp-server  # Web search
 - **ALWAYS seek explicit approval before editing any files** - discuss design approaches and get confirmation before implementing changes
 - **Collaborative design first**: Propose solutions and get feedback before coding
 - **No unapproved changes**: Never modify code without explicit user permission
+- **Never perform destructive actions without explicit permission** - especially commands like `docker system prune` that can permanently delete data. Always discuss and get approval before running any potentially destructive operations
 
 ## Communication Guidelines
 - **Keep responses brief and concise** while always being accurate

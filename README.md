@@ -1,5 +1,5 @@
 # Chainloot
-
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/thesavant42/chainloot-Yoda-Bot-Interface)
 ## Custom Front-End Interface to Chat with AI-Powered Yoda Animatronic
 
 ### Utilizing:

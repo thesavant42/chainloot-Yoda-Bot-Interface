@@ -1,5 +1,57 @@
 # CHANGELOG
 
+## MQTT Monitoring System & Persona Logic Fix - October 23, 2025
+
+**Status**: **COMPLETED**
+
+### Changes Made
+
+#### MQTT Monitoring System Implementation
+- **Created**: `lib/container_monitor.py` - New monitoring module for system resources and service availability
+- **Extended**: `lib/mqtt_publisher.py` - Added `publish_resource_usage()` and `publish_service_status()` methods
+- **Updated**: `app.py` - Integrated monitoring lifecycle (start on chat begin, stop on chat end)
+- **Updated**: `yoda.mqtt` - Added new MQTT topics for monitoring data
+- **Updated**: `docker/chainloot/chainlit/requirements-chainlit.txt` - Added monitoring dependencies (psutil, aiohttp, gputil)
+- **Updated**: `.github/copilot-instructions.md` - Added monitoring system documentation
+
+#### Persona Logic Fix
+- **Fixed**: Persona status transitions in `app.py` `on_chat_end()` method
+- **Added**: "idle" status and neutral emotion publishing when chat sessions end
+- **Issue**: Personas were stuck showing last chat emotion indefinitely
+- **Solution**: Now properly transitions to idle/neutral state when users disconnect
+
+#### MQTT Topic Structure
+- **System Resources**: `/chainloot/system/system/resources` - Host system CPU, memory, GPU, disk usage
+- **Container Resources**: `/chainloot/system/{container}/resources` - Per-container CPU, memory usage (tts_webui, ollama, postgres, localstack, chainlit)
+- **Services**: `/chainloot/system/{service_name}/services` - Per-service availability (tts_webui, lm_studio, ollama, postgres, localstack)
+- **Personas**: `/chainloot/persona/{name}/status` and `/chainloot/persona/{name}/feelings`
+- **Monitoring**: 30-second intervals during active chat sessions
+
+#### Technical Implementation
+- **Async Monitoring**: Background task for non-blocking resource/service checks
+- **Service Checks**: HTTP health checks for TTS-WebUI, LM Studio, Ollama, PostgreSQL, LocalStack
+- **System Resources**: CPU, memory, disk usage via psutil, GPU via GPUtil
+- **Container Resources**: Per-container CPU/memory via Docker API (tts-webui, ollama, postgres, localstack, chainlit)
+- **Lifecycle Management**: Monitoring starts/stops with chat sessions
+- **MQTT v5.0**: Message expiry, QoS 1, retained messages
+
+### Benefits
+- **System Visibility**: Real-time monitoring of container resources and service health
+- **Persona Management**: Proper idle states when users disconnect
+- **Operational Monitoring**: MQTT-based monitoring for external dashboards/alerts
+- **Resource Efficiency**: Monitoring only runs during active chat sessions
+
+### Files Affected
+- **New**: `docker/chainloot/chainlit/lib/container_monitor.py`
+- **Modified**: `docker/chainloot/chainlit/lib/mqtt_publisher.py`
+- **Modified**: `docker/chainloot/chainlit/app.py`
+- **Modified**: `yoda.mqtt`
+- **Modified**: `docker/chainloot/chainlit/requirements-chainlit.txt`
+- **Modified**: `.github/copilot-instructions.md`
+- **Modified**: `CHANGELOG.md`
+
+---
+
 ## Status
 # Chainlit S3 Storage Client Fix - Changelog
 

@@ -17,6 +17,7 @@ This is a conversational AI platform built with Chainlit that integrates speech 
 - **Tool Integration**: MCP servers run server-side, not in browser (`lib/mcp_*_manager.py`)
 - **Configuration**: Dynamic MCP setup via `mcp_servers.json` vs legacy hardcoded servers
 - **Character Profiles**: Personality switching with voice/prompt persistence (`PROFILE_DEFAULTS`)
+### Container Monitoring**: System resources and service availability tracked via MQTT (`lib/container_monitor.py`)
 
 ## Critical Developer Workflows
 
@@ -88,19 +89,20 @@ PROFILE_DEFAULTS = {
 - **Message Chain**: User Audio → STT → Tool Check → LLM → TTS Processing → Audio Response
 - **Settings Sync**: UI changes → `on_settings_update()` → `config.json` persistence
 - **Profile Switching**: Character selection → `PROFILE_DEFAULTS` lookup → session state update
+- **Monitoring Flow**: Container Monitor → Docker API + System Stats → MQTT Publishing → External Monitoring
 
 ## Development Commands
 
 ### Local Development
 ```bash
 # Start all services
-docker-compose -f install/docker/docker-compose.yml up
+docker-compose -f docker/chainloot/docker-compose.yml up
 
 # Run with HTTPS (default)
 ./start.sh https
 
 # Run database migrations
-prisma migrate deploy --schema=database/schema.prisma
+prisma migrate deploy --schema=docker/chainloot/chainlit/database/schema.prisma
 prisma generate
 ```
 
@@ -124,25 +126,47 @@ npx @brave/brave-search-mcp-server  # Web search
 - **Logging**: Performance metrics for LLM/TTS calls with `logger.info(f"PERF: ...")`
 
 ### File Organization
-- **`lib/`**: Core business logic modules (config, MCP, audio processing)
+- **`docker/chainloot/`**: Container orchestration and service-specific configurations
+  - **`chainlit/`**: Main application container with source code, configs, and assets
+    - **`lib/`**: Core business logic modules (config, MCP, audio processing)
+    - **`config/`**: Configuration files (JSON configs, MCP server definitions)
+    - **`database/`**: Database schema and migrations (Prisma ORM)
+    - **`public/`**: Static assets (avatars, themes)
+    - **`ssl/`**: SSL certificates for HTTPS
+    - **`uploads/`**: User-uploaded files
+  - **`database/`**: PostgreSQL container configuration
+  - **`localstack/`**: LocalStack S3 simulation container
+  - **`mosquitto/`**: MQTT broker container
+  - **`ollama/`**: Ollama LLM container
+  - **`tts-webui/`**: TTS-WebUI speech synthesis container
 - **`docs/`**: API documentation and research notes
-- **`install/database/`**: Database schema and migrations (Prisma ORM)
-- **`install/docker/`**: Docker configuration and compose files
-- **`public/`**: Static assets (avatars, themes)
 - **`submodules/`**: External dependencies (TTS-WebUI, datalayer)
 
+**Container-Specific Organization**: Each service under `docker/chainloot/` maintains its own folder with Dockerfiles, environment files, and configuration. Do not consolidate or share container-specific files (like requirements.txt or .env files) across services, as this structure preserves isolation and simplifies troubleshooting.
+
 ### Code Style Notes
+- **No Emojis EVER**: Emojis are strictly forbidden in code, comments, commit messages, documentation, and chat communications
 - **Async First**: All I/O operations use async/await
 - **Session State**: User preferences stored in `cl.user_session`
 - **Monkey Patching**: Custom S3 client injected for LocalStack compatibility
-- **No Emojis**: Emojis are not allowed in our code
 - **Factory Pattern**: `get_active_mcp_manager()` switches between dynamic/legacy MCP
 
+## Workflow Requirements
+- **ALWAYS seek explicit approval before editing any files** - discuss design approaches and get confirmation before implementing changes
+- **Collaborative design first**: Propose solutions and get feedback before coding
+- **No unapproved changes**: Never modify code without explicit user permission
+
+## Communication Guidelines
+- **Keep responses brief and concise** while always being accurate
+- **Never disagree with the user** - focus on understanding and fulfilling their requests
+- **Be helpful and collaborative** in all interactions
+- **ALWAYS seek explicit approval before editing any files** - discuss design approaches and get confirmation before implementing changes
+
 ## Key Files for Understanding
-- `app.py`: Main application flow and UI orchestration
-- `lib/config_handler.py`: Service client initialization and asset fetching
-- `lib/mcp_tool_processor.py`: Intelligent tool selection and execution
-- `lib/dynamic_mcp_manager.py`: Modern MCP server management
-- `config.json`: Authoritative configuration source
-- `install/docker/docker-compose.yml`: Service orchestration and networking
-- `install/database/schema.prisma`: Data model for conversation persistence
+- `docker/chainloot/chainlit/app.py`: Main application flow and UI orchestration
+- `docker/chainloot/chainlit/lib/config_handler.py`: Service client initialization and asset fetching
+- `docker/chainloot/chainlit/lib/mcp_tool_processor.py`: Intelligent tool selection and execution
+- `docker/chainloot/chainlit/lib/dynamic_mcp_manager.py`: Modern MCP server management
+- `docker/chainloot/chainlit/config/config.json`: Authoritative configuration source
+- `docker/chainloot/docker-compose.yml`: Service orchestration and networking
+- `docker/chainloot/chainlit/database/schema.prisma`: Data model for conversation persistence

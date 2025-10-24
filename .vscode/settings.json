@@ -13,8 +13,8 @@
     "python-envs.pythonProjects": [],
     "vsmqtt.brokerProfiles": [
         {
-            "name": "localhost",
-            "host": "localhost",
+            "name": "192.168.1.98",
+            "host": "192.168.1.98",
             "port": 1883,
             "clientId": "vsmqtt_client_737e",
             "username": "yoda",

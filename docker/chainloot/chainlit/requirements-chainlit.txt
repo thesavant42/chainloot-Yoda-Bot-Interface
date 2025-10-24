@@ -23,3 +23,9 @@ av>=12.0.0          # PyAV for audio processing
 mcp-proxy
 chainlit            # Core Requirement
 mcp                 # MCP core
+
+# Monitoring requirements
+psutil==5.9.0
+aiohttp==3.9.1
+gputil==1.4.0
+docker==7.0.0

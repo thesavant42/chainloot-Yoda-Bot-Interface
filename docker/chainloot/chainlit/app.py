@@ -73,6 +73,8 @@ from chainlit.config import (
     McpFeature,
     UISettings,
 )
+from lib.container_monitor import get_container_monitor
+
 config_path = "config/config.json"
 mcp_tools_cache = {}
 
@@ -536,6 +538,10 @@ async def on_chat_start():
     else:
         logger.info("MCP servers not yet initialized - basic chat ready")
     
+    # Start container monitoring
+    container_monitor = get_container_monitor()
+    container_monitor.start_monitoring(interval=30)  # Monitor every 30 seconds
+    logger.info("Container monitoring started")
     
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:
@@ -670,6 +676,26 @@ async def on_chat_start():
 @cl.on_chat_end
 async def on_chat_end():
     print("The user disconnected!")
+    
+    # Publish idle status and neutral emotion to MQTT
+    chat_profile_name = cl.user_session.get("chat_profile")
+    if chat_profile_name:
+        mqtt_publisher = get_mqtt_publisher()
+        mqtt_publisher.publish_status(chat_profile_name.lower(), "idle", expiry_interval=300)
+        
+        # Publish neutral emotion when going idle
+        neutral_emotion = {
+            "dominant_emotion": "neutral",
+            "dominant_score": 1.0,
+            "weights": {"neutral": 1.0}
+        }
+        mqtt_publisher.publish_emotion(chat_profile_name.lower(), neutral_emotion, expiry_interval=300)
+        logger.info(f"Published idle status and neutral emotion for {chat_profile_name}")
+    
+    # Stop container monitoring
+    container_monitor = get_container_monitor()
+    container_monitor.stop_monitoring()
+    logger.info("Container monitoring stopped")
     
     # Clean up MCP resources if this is the last session
     try:

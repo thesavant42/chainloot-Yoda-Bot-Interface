@@ -41,3 +41,5 @@ aiohttp>=3.11.11
 #aiohttp==3.9.1
 gputil==1.4.0
 docker>=7.1.0
+
+psycopg2-binary>=2.9.0

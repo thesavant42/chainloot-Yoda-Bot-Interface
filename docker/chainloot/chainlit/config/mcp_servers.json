@@ -54,7 +54,7 @@
     },
     "mqtt": {
       "command": "mcp-proxy",
-      "args": ["http://127.0.0.1:8100/mcp/"],
+      "args": ["--transport", "streamablehttp", "http://127.0.0.1:8100/mcp/"],
       "env": {},
       "description": "MQTT broker communication via embedded server"
     },

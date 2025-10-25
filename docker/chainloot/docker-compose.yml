@@ -61,6 +61,7 @@ services:
       dockerfile: ./chainlit.Dockerfile
     restart: unless-stopped
     ports:
+      - "8100:8100"
       - "8443:8443"
     volumes:
       - ./chainlit/:/app

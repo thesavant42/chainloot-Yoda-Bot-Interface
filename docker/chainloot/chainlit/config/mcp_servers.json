@@ -52,6 +52,12 @@
       "env": {},
       "description": "Wikipedia encyclopedia lookup"
     },
+    "mqtt": {
+      "command": "mcp-proxy",
+      "args": ["http://127.0.0.1:8100/mcp/"],
+      "env": {},
+      "description": "MQTT broker communication via embedded server"
+    },
     "Home Assistant": {
         "command": "mcp-proxy",
         "args":

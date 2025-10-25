@@ -44,8 +44,6 @@ import asyncio
 from chainlit.input_widget import Select, Slider, Switch
 import json
 import os
-import threading
-from contextlib import asynccontextmanager
 from lib.mqtt_publisher import get_mqtt_publisher
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
@@ -76,71 +74,6 @@ from chainlit.config import (
     UISettings,
 )
 from lib.container_monitor import get_container_monitor
-
-# MQTT MCP Server Embedded Integration
-# Import and initialize the MQTT MCP server directly within the Chainlit app
-try:
-    from mqtt_mcp import MQTTMCP
-    mqtt_mcp_server = MQTTMCP()
-    mqtt_server_enabled = True
-    logger.info("MQTT MCP server imported successfully")
-except ImportError as e:
-    logger.warning(f"MQTT MCP server not available: {e}")
-    mqtt_mcp_server = None
-    mqtt_server_enabled = False
-
-# Background thread for running the embedded MQTT MCP server
-def start_mqtt_mcp_in_background():
-    """Start the MQTT MCP server in a background thread using asyncio"""
-    if not mqtt_server_enabled:
-        logger.warning("MQTT MCP server disabled due to import failure")
-        return
-    
-    try:
-        # Create a new event loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Run the MQTT server with HTTP transport on port 8100 
-        # This avoids conflicts with other services and provides HTTP endpoint for mcp-proxy
-        logger.info("Starting embedded MQTT MCP server on port 8100...")
-        loop.run_until_complete(
-            mqtt_mcp_server.run_async(transport="http", host="0.0.0.0", port=8100)
-        )
-    except Exception as e:
-        logger.error(f"Failed to start embedded MQTT MCP server: {e}")
-    finally:
-        loop.close()
-
-# Global reference to the MQTT server thread
-mqtt_server_thread = None
-
-def initialize_embedded_mqtt_server():
-    """Initialize the embedded MQTT MCP server in a background thread"""
-    global mqtt_server_thread
-    
-    if not mqtt_server_enabled:
-        logger.info("MQTT MCP server disabled, skipping initialization")
-        return
-    
-    if mqtt_server_thread and mqtt_server_thread.is_alive():
-        logger.info("MQTT MCP server thread already running")
-        return
-    
-    try:
-        mqtt_server_thread = threading.Thread(
-            target=start_mqtt_mcp_in_background, 
-            daemon=True,
-            name="MQTTMCPServer"
-        )
-        mqtt_server_thread.start()
-        logger.info("Embedded MQTT MCP server thread started")
-        
-        # Give the server a moment to start up
-        time.sleep(2)
-        
-    except Exception as e:
-        logger.error(f"Failed to start MQTT MCP server thread: {e}")
 
 config_path = "config/config.json"
 mcp_tools_cache = {}
@@ -173,11 +106,6 @@ async def initialize_mcp_on_startup():
     except Exception as e:
         print(f"MCP pre-initialization failed: {e}")
         print("Users can still chat, but advanced tools may not be available.")
-
-# Initialize embedded MQTT MCP server at module level
-# This ensures the server is available before any MCP clients try to connect
-print("Starting embedded MQTT MCP server at application startup...")
-initialize_embedded_mqtt_server()
 
 # Note: Removed background thread initialization to avoid event loop conflicts
 # MCP will now initialize on first chat session instead
@@ -850,18 +778,6 @@ async def cleanup_on_exit():
         logger.info("MQTT disconnected successfully")
     except Exception as e:
         logger.error(f"Error disconnecting MQTT: {e}")
-    
-    # Clean up embedded MQTT MCP server
-    global mqtt_server_thread
-    if mqtt_server_thread and mqtt_server_thread.is_alive():
-        try:
-            logger.info("Shutting down embedded MQTT MCP server...")
-            # The daemon thread will be terminated when the main process ends
-            # For graceful shutdown, we could implement a proper shutdown mechanism
-            # but for now, daemon=True ensures it doesn't block app exit
-            logger.info("Embedded MQTT MCP server marked for shutdown")
-        except Exception as e:
-            logger.error(f"Error shutting down MQTT MCP server: {e}")
 
 def signal_handler(signum, frame):
     """Handle shutdown signals"""

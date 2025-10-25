@@ -45,7 +45,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv tool install mcp-server-time && \
     uv tool install mcp-server-fetch && \
-    uv tool install mcp-server-git
+    uv tool install mcp-server-git && \
+    uv tool install mqtt-mcp
 
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g wikipedia-mcp && \

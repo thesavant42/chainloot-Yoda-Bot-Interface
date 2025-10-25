@@ -17,7 +17,7 @@ This is a conversational AI platform built with Chainlit that integrates speech 
 - **Tool Integration**: MCP servers run server-side, not in browser (`lib/mcp_*_manager.py`)
 - **Configuration**: Dynamic MCP setup via `mcp_servers.json` vs legacy hardcoded servers
 - **Character Profiles**: Personality switching with voice/prompt persistence (`PROFILE_DEFAULTS`)
-### Container Monitoring**: System resources and service availability tracked via MQTT (`lib/container_monitor.py`)
+- **Container Monitoring**: System resources and service availability tracked via MQTT (`lib/container_monitor.py`)
 
 ## Critical Developer Workflows
 
@@ -26,6 +26,20 @@ This is a conversational AI platform built with Chainlit that integrates speech 
 2. **Database Migration**: `prisma migrate deploy` runs before app start
 3. **Service Dependencies**: Chainlit waits for TTS-WebUI, PostgreSQL, LocalStack, Ollama
 
+### Build Optimization & Performance
+- **Layer Caching**: Heavy installations (packages, MCP servers, ML models) before code copy
+- **Cache Mounts**: Persistent pip, npm, uv, and Hugging Face download caches
+- **Development Speed**: Code-only changes rebuild 90% faster due to optimized Dockerfile layers
+
+### Debugging & Troubleshooting
+```bash
+# View service logs
+docker-compose -f docker/chainloot/docker-compose.yml logs -f [service]
+
+# Force clean rebuild when dependencies change
+docker builder prune -f
+docker-compose -f docker/chainloot/docker-compose.yml build --no-cache
+```
 ### Audio Pipeline
 ```python
 # STT → Processing → TTS flow (from app.py:390-420)

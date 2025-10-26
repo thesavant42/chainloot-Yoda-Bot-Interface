@@ -89,10 +89,6 @@ temp/
 # Docker
 .dockerignore
 
-# Chainlit specific
-.chainlit/
-chainlit.md
-
 # TTS and ML models
 ollama_data/
 models/
@@ -106,5 +102,3 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-package.json

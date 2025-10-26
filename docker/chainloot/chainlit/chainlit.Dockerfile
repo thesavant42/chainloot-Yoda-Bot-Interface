@@ -2,7 +2,7 @@
 FROM python:3.11-slim-bullseye AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y gcc g++ libffi-dev libssl-dev git cmake pkg-config \
+RUN apt-get update && apt-get install -y cron vim net-tools gcc g++ libffi-dev libssl-dev git cmake pkg-config \
     nasm libz-dev libbz2-dev liblzma-dev \
     libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libavfilter-dev libswscale-dev libswresample-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -25,7 +25,7 @@ RUN pip install uv
 FROM python:3.11-slim-bullseye
 
 # Install runtime dependencies (added curl for health checks, nodejs/npm for potential front-end if needed, bash and passwd for user management)
-RUN apt-get update && apt-get install -y nodejs npm curl bash passwd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y nodejs npm curl bash passwd jq && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 18+ using nvm (required for Prisma and MCP servers)
 ENV NODE_VERSION=20.18.0

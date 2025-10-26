@@ -73,7 +73,6 @@ from chainlit.config import (
     McpFeature,
     UISettings,
 )
-from lib.container_monitor import get_container_monitor
 
 config_path = "config/config.json"
 mcp_tools_cache = {}
@@ -537,11 +536,6 @@ async def on_chat_start():
         logger.info(f"{manager_type} MCP servers ready - {tool_count} tools available")
     else:
         logger.info("MCP servers not yet initialized - basic chat ready")
-    
-    # Start container monitoring
-    container_monitor = get_container_monitor()
-    container_monitor.start_monitoring(interval=30)  # Monitor every 30 seconds
-    logger.info("Container monitoring started")
     
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:

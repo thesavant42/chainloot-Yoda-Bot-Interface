@@ -11,6 +11,10 @@ cleanup() {
         echo "Stopping MQTT MCP server (PID: $MQTT_PID)..."
         kill $MQTT_PID 2>/dev/null
     fi
+    # Remove cron job
+    echo "Removing container monitoring cron job..."
+    rm -f /etc/cron.d/container_monitor
+    service cron reload 2>/dev/null || true
     exit 0
 }
 
@@ -31,6 +35,27 @@ echo "MQTT MCP server started with PID: $MQTT_PID"
 
 # Give MQTT server a moment to start up
 sleep 3
+
+# Start cron daemon for container monitoring
+echo "Starting cron daemon for container monitoring..."
+service cron start
+
+# Add cron job to run container monitor every 5 minutes
+echo "Setting up container monitoring cron job..."
+echo "*/5 * * * * /usr/local/bin/python3 /app/lib/container_monitor_script.py >> /app/container_monitor.log 2>&1" > /etc/cron.d/container_monitor
+echo "*/5 * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
+chmod 0644 /etc/cron.d/container_monitor
+crontab /etc/cron.d/container_monitor
+
+# Run initial container monitoring
+echo "Running initial container monitoring..."
+chmod +x /app/lib/container_monitor_script.py
+/usr/local/bin/python3 /app/lib/container_monitor_script.py
+
+# Run initial system monitoring
+echo "Running initial system monitoring..."
+chmod +x /app/lib/system_monitor_script.py
+/usr/local/bin/python3 /app/lib/system_monitor_script.py
 
 # Default mode is https
 MODE="${1:-https}"

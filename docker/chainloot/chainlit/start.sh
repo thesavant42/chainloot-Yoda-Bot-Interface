@@ -22,9 +22,7 @@ cleanup() {
 trap cleanup SIGTERM SIGINT
 
 # Run database migrations
-echo "Running database migrations..."
 prisma migrate deploy --schema=./database/schema.prisma
-echo "Generating Prisma client..."
 prisma generate --schema=./database/schema.prisma
 
 # Start MQTT MCP server in background
@@ -33,24 +31,18 @@ mqtt-mcp &
 MQTT_PID=$!
 echo "MQTT MCP server started with PID: $MQTT_PID"
 
-# Give MQTT server a moment to start up
-sleep 3
+# Start badge subscriber in background
+echo "Starting badge subscriber..."
+python3 /app/lib/badge_subscriber.py &
+BADGE_PID=$!
+echo "Badge subscriber started with PID: $BADGE_PID"
 
-# Start cron daemon for container monitoring
-echo "Starting cron daemon for container monitoring..."
-service cron start
-
-# Add cron job to run container monitor every 5 minutes
+# Add cron job to run container monitor every 2 minutes
 echo "Setting up container monitoring cron job..."
-echo "*/5 * * * * /usr/local/bin/python3 /app/lib/container_monitor_script.py >> /app/container_monitor.log 2>&1" > /etc/cron.d/container_monitor
-echo "*/5 * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
+echo "*/2 * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
 chmod 0644 /etc/cron.d/container_monitor
 crontab /etc/cron.d/container_monitor
 
-# Run initial container monitoring
-echo "Running initial container monitoring..."
-chmod +x /app/lib/container_monitor_script.py
-/usr/local/bin/python3 /app/lib/container_monitor_script.py
 
 # Run initial system monitoring
 echo "Running initial system monitoring..."

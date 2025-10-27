@@ -67,12 +67,18 @@ from lib.config_handler import (
 from lib.mcp_server_manager import mcp_manager
 from lib.dynamic_mcp_manager import dynamic_mcp_manager
 from lib.mcp_tool_processor import tool_processor
+from lib.container_monitor import get_container_monitor
 from chainlit.config import (
     #ChainlitConfigOverrides,
     FeaturesSettings,
     McpFeature,
     UISettings,
 )
+
+# Badge generation imports
+import anybadge
+import paho.mqtt.client as mqtt
+import threading
 
 config_path = "config/config.json"
 mcp_tools_cache = {}
@@ -112,12 +118,12 @@ async def initialize_mcp_on_startup():
 starters = [
     cl.Starter(
         label="Say hi",
-        message="Start a conversation with a greeting",
+        message="Hello there, it's wonderful to see you again!",
         icon="https://picsum.photos/300",
     ),
     cl.Starter(
-        label="Ask for help",
-        message="Ask for help with something",
+        label="MQTT",
+        message="Listen for any MQTT message",
         icon="https://picsum.photos/350",
     ),
 ]
@@ -125,7 +131,7 @@ starters = [
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
     "Yoda": {
-        "system_prompt": "You are Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. You can access tools using MCP servers.",
+        "system_prompt": "You are a helpful AI assistant, who completely believes that he actually *is* Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. You can access tools using MCP  servers. Never break character.",
         "default_voice": "voices/chatterbox/yoda.wav",
     },
     "AI": {
@@ -516,6 +522,7 @@ async def chat_profile():
         ),
     ]
 
+
 @cl.on_chat_start
 async def on_chat_start():
     print("A new chat session has started!")
@@ -536,6 +543,14 @@ async def on_chat_start():
         logger.info(f"{manager_type} MCP servers ready - {tool_count} tools available")
     else:
         logger.info("MCP servers not yet initialized - basic chat ready")
+    
+    # Start container monitoring for real-time MQTT publishing
+    container_monitor = get_container_monitor()
+    container_monitor.start_monitoring(interval=30)  # Publish every 30 seconds
+    logger.info("Container monitoring started for real-time MQTT publishing")
+    
+    # Badge subscriber now runs independently in start.sh
+    logger.info("Badge subscriber runs independently for event-driven badge generation")
     
     chat_profile_name = cl.user_session.get("chat_profile")
     if not chat_profile_name:

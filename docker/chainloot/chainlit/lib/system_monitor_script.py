@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Question: Why is this a seperate sctipy?
+# We have system_monitor_script.py, container_monitor.py, container_monitor_script.py
+# Do we need more than 1? This is messy.
+
 """
 System Monitor Script
 Collects system and GPU stats and publishes to MQTT
@@ -7,6 +11,7 @@ Collects system and GPU stats and publishes to MQTT
 import json
 import time
 import psutil
+import os
 try:
     import gputil as GPUtil
 except ImportError:
@@ -113,6 +118,19 @@ def publish_system_data():
             "gpu": gpu_stats
         }
 
+        # Optionally write JSON to disk for file-based consumers (atomic replace)
+        stats_file = os.getenv('SYSTEM_STATS_FILE', '/app/last_system_stats.json')
+        try:
+            tmp_path = stats_file + '.tmp'
+            os.makedirs(os.path.dirname(stats_file), exist_ok=True)
+            with open(tmp_path, 'w', encoding='utf-8') as f:
+                json.dump(all_stats, f)
+            # atomic replace
+            os.replace(tmp_path, stats_file)
+            print(f'Wrote system stats JSON to {stats_file}')
+        except Exception as e:
+            print(f'Failed to write stats file: {e}')
+
         # Publish to MQTT
         topic = "/chainloot/system/stats"
         payload = json.dumps(all_stats)
@@ -125,6 +143,50 @@ def publish_system_data():
             retain=True,
             qos=1
         )
+
+        # Publish per-key system stats
+        for section, data in system_stats.items():
+            if section == "timestamp":
+                # Publish timestamp separately
+                ts_topic = "/chainloot/system/timestamp"
+                ts_payload = json.dumps(data)
+                publish.single(
+                    topic=ts_topic,
+                    payload=ts_payload,
+                    hostname="192.168.1.98",
+                    port=1883,
+                    retain=True,
+                    qos=1
+                )
+                continue
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    key_topic = f"/chainloot/system/{section}/{key}"
+                    key_payload = json.dumps(value)
+                    publish.single(
+                        topic=key_topic,
+                        payload=key_payload,
+                        hostname="192.168.1.98",
+                        port=1883,
+                        retain=True,
+                        qos=1
+                    )
+
+        # Publish per-key GPU stats
+        if isinstance(gpu_stats, dict) and "error" not in gpu_stats:
+            for gpu_id, gpu_data in gpu_stats.items():
+                if isinstance(gpu_data, dict):
+                    for key, value in gpu_data.items():
+                        gpu_topic = f"/chainloot/system/gpu/{gpu_id}/{key}"
+                        gpu_payload = json.dumps(value)
+                        publish.single(
+                            topic=gpu_topic,
+                            payload=gpu_payload,
+                            hostname="192.168.1.98",
+                            port=1883,
+                            retain=True,
+                            qos=1
+                        )
 
         print(f"Published system stats: CPU {system_stats['cpu']['percent']}%, Memory {system_stats['memory']['percent']}%, GPU count: {len(gpu_stats) if isinstance(gpu_stats, dict) and 'error' not in gpu_stats else 0}")
 

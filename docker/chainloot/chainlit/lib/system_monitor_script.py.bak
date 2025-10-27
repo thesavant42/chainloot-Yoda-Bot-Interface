@@ -6,7 +6,6 @@
 """
 System Monitor Script
 Collects system and GPU stats and publishes to MQTT
-FIX: Use persistent client connection instead of multiple publish.single() calls
 """
 
 import json
@@ -17,7 +16,7 @@ try:
     import gputil as GPUtil
 except ImportError:
     GPUtil = None
-import paho.mqtt.client as mqtt
+import paho.mqtt.publish as publish
 import sys
 from typing import Dict, Any
 
@@ -105,7 +104,7 @@ def get_gpu_stats() -> Dict[str, Any]:
         return {"error": f"Failed to get GPU stats: {str(e)}"}
 
 def publish_system_data():
-    """Collect and publish system and GPU data to MQTT using persistent client"""
+    """Collect and publish system and GPU data to MQTT"""
     try:
         # Get system stats
         system_stats = get_system_stats()
@@ -132,50 +131,46 @@ def publish_system_data():
         except Exception as e:
             print(f'Failed to write stats file: {e}')
 
-        # BUG FIX: Use persistent MQTT client instead of multiple publish.single() calls
-        # publish.single() is a one-shot helper that connect/publish/disconnect on EACH call
-        # This causes timing issues with retained messages due to rapid connection cycling
-        # Solution: Create ONE client connection, publish all messages, then disconnect
-        
-        broker_host = os.getenv('MQTT_HOST', "192.168.1.98")
-        broker_port = int(os.getenv('MQTT_PORT', 1883))
-        broker_user = os.getenv('MQTT_USER', "yoda")
-        broker_pass = os.getenv('MQTT_PASS', "yoda")
-
-        # Create persistent client
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-        
-        if broker_user and broker_pass:
-            client.username_pw_set(broker_user, broker_pass)
-        
-        # Connect once
-        client.connect(broker_host, broker_port, keepalive=60)
-        
-        # Start the network loop
-        client.loop_start()
-        
-        # Give connection time to establish
-        time.sleep(0.1)
-
-        # Publish aggregate stats
+        # Publish to MQTT
         topic = "/chainloot/system/stats"
         payload = json.dumps(all_stats)
-        client.publish(topic=topic, payload=payload, retain=True, qos=1)
 
-        # Publish timestamp
-        ts_topic = "/chainloot/system/timestamp"
-        ts_payload = json.dumps(system_stats["timestamp"])
-        client.publish(topic=ts_topic, payload=ts_payload, retain=True, qos=1)
+        publish.single(
+            topic=topic,
+            payload=payload,
+            hostname="192.168.1.98",
+            port=1883,
+            retain=True,
+            qos=1
+        )
 
         # Publish per-key system stats
         for section, data in system_stats.items():
             if section == "timestamp":
+                # Publish timestamp separately
+                ts_topic = "/chainloot/system/timestamp"
+                ts_payload = json.dumps(data)
+                publish.single(
+                    topic=ts_topic,
+                    payload=ts_payload,
+                    hostname="192.168.1.98",
+                    port=1883,
+                    retain=True,
+                    qos=1
+                )
                 continue
             if isinstance(data, dict):
                 for key, value in data.items():
                     key_topic = f"/chainloot/system/{section}/{key}"
                     key_payload = json.dumps(value)
-                    client.publish(topic=key_topic, payload=key_payload, retain=True, qos=1)
+                    publish.single(
+                        topic=key_topic,
+                        payload=key_payload,
+                        hostname="192.168.1.98",
+                        port=1883,
+                        retain=True,
+                        qos=1
+                    )
 
         # Publish per-key GPU stats
         if isinstance(gpu_stats, dict) and "error" not in gpu_stats:
@@ -184,21 +179,19 @@ def publish_system_data():
                     for key, value in gpu_data.items():
                         gpu_topic = f"/chainloot/system/gpu/{gpu_id}/{key}"
                         gpu_payload = json.dumps(value)
-                        client.publish(topic=gpu_topic, payload=gpu_payload, retain=True, qos=1)
-
-        # Allow messages to be sent
-        time.sleep(0.5)
-        
-        # Clean disconnect
-        client.loop_stop()
-        client.disconnect()
+                        publish.single(
+                            topic=gpu_topic,
+                            payload=gpu_payload,
+                            hostname="192.168.1.98",
+                            port=1883,
+                            retain=True,
+                            qos=1
+                        )
 
         print(f"Published system stats: CPU {system_stats['cpu']['percent']}%, Memory {system_stats['memory']['percent']}%, GPU count: {len(gpu_stats) if isinstance(gpu_stats, dict) and 'error' not in gpu_stats else 0}")
 
     except Exception as e:
         print(f"Failed to publish system data: {e}")
-        import traceback
-        traceback.print_exc()
 
 def main():
     """Main monitoring function"""

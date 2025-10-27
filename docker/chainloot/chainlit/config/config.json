@@ -36,7 +36,7 @@
     "character": null,
     "reasoning_enabled": false,
     "profile_voices": {
-        "Yoda": "voices/chatterbox/10.wav",
+        "Yoda": "voices/chatterbox/11.wav",
         "AI": "voices/chatterbox/3po.wav",
         "Stark": "voices/chatterbox/stark.wav"
     },

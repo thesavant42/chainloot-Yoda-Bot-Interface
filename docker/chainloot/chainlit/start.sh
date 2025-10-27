@@ -42,7 +42,7 @@ echo "Setting up container monitoring cron job..."
 echo "* * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
 chmod 0644 /etc/cron.d/container_monitor
 crontab /etc/cron.d/container_monitor
-
+service cron start
 
 # Run initial system monitoring
 echo "Running initial system monitoring..."

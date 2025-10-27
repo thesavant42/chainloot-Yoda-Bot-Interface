@@ -1,0 +1,25 @@
+# Logs and data
+data/
+*.log
+logs/*
+!logs/.gitkeep
+
+# Environment
+.env
+
+# Docker
+.docker/
+
+# Editor files
+
+.idea/
+*.swp
+
+# System files
+.DS_Store
+Thumbs.db
+
+# In .gitignore
+history/*
+!history/.gitkeep
+

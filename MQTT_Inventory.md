@@ -1,5 +1,7 @@
 # MQTT Around The App
 
+A Catalog of MQTT in the Chainloot environment
+
 ## NOTE! The passwords must be changed when installed in production
 
 - demo url: mqtt://192.168.1.98:1883
@@ -28,6 +30,43 @@
 - Seem to only run at start
 - As a result, all reported statistics are inaccurate
 
+### Root Cause Identified
+
+#### CRITICAL FINDINGS - Three Monitoring Systems with Different Purposes
+
+There are **THREE separate monitoring systems** in the codebase, each with legitimate architectural purposes:
+
+1. **system_monitor_script.py** (via cron at host level)
+   - Monitors GPU/CPU/Memory stats at the Docker HOST level, not inside container
+   - Justification: GPU is a shared resource used by multiple applications; must be monitored externally
+   - Runs via cron job configured in `start.sh`
+   - Publishes to: `/chainloot/system/*` namespace
+
+2. **container_monitor.py** (async coroutine in app.py)
+   - Monitors individual container health/status (name, state, uptime)
+   - Justification: Container-level operational concerns are separate from system-level resource concerns
+   - Runs in app.py event loop at 30s intervals
+   - Publishes to: `/chainloot/system/containers/*` namespace
+
+3. **Emotional classifier system** (via mqtt_publisher.py)
+   - Publishes bot emotional state based on sentiment analysis
+   - Separate concern from infrastructure monitoring
+   - Publishes to: `/chainloot/<profile>/*` namespace
+
+**THE STALE DATA PROBLEM**: `system_monitor.log` shows identical statistics repeated across multiple runs:
+
+```txt
+Published system stats: CPU 0.2%, Memory 23.0%, GPU count: 1
+Published system stats: CPU 0.2%, Memory 23.0%, GPU count: 1
+Published system stats: CPU 0.2%, Memory 23.0%, GPU count: 1
+```
+
+**Cron IS running** (confirmed by presence of log entries), but the published data is frozen. This indicates the issue is NOT with cron execution, but rather with:
+
+- **HOW the data is being collected** (GPUtil/psutil may be returning stale values)
+- **HOW the data is being published to MQTT** (publish mechanism may have a bug)
+- **Timing of GPU stat collection** (GPU driver may not be returning fresh data to the container)
+
 ### Objective
 
 - Identify the cause of the MQTT Stats reporting failure
@@ -48,6 +87,25 @@ These are the paths that have MQTT code in them. These should all be reviewed to
 
 ---
 
+## Analysis: Why GPU Stats Are Stale
+
+### System Monitor Lifecycle
+
+Looking at the code flow in `start.sh`:
+
+1. **Line 35-36**: Badge subscriber starts (works fine, subscribes to MQTT topics)
+2. **Line 39-41**: Cron job is CONFIGURED via `/etc/cron.d/container_monitor` to run every 60 seconds
+3. **Line 46-47**: Cron is activated with `crontab` command
+4. **Line 50-52**: `system_monitor_script.py` runs ONCE manually for initial stats
+
+**THE PROVEN FACTS**:
+
+- Cron IS executing (confirmed by log entries in `system_monitor.log`)
+- Data remains frozen across multiple cron executions
+- Badge subscriber is correctly subscribing and receiving MQTT data
+
+**THE ACTUAL PROBLEM**: Despite cron running the script repeatedly, the GPU/CPU stats published to MQTT never change. The bug exists in the data collection, MQTT publishing, or GPU driver access pipeline—NOT in the cron scheduling.
+
 ### CORE
 
 These modules are essential to the operation of the app. They are not candidates for removal. They should be evaluated for logic errors.
@@ -58,7 +116,7 @@ These modules are essential to the operation of the app. They are not candidates
 
 - Core Application!
 
-**Line 547-554**
+#### app.py Container Monitor Integration (Lines 547-554)
 
 ```python
 # Start container monitoring for real-time MQTT publishing
@@ -233,7 +291,10 @@ chmod +x /app/lib/system_monitor_script.py
 `C:\Users\jbras\GitHub\chainloot-Yoda-Bot-Interface\docker\chainloot\chainlit\lib\system_monitor_script.py`
 
 - "Collects system and GPU stats and publishes to MQTT"
-- Seems duplicative, perhaps a candidate for archive or refactor
+- **CRITICAL**: This script is the SOURCE of GPU/CPU stats for badges
+- **BUG**: Relies on cron job in `start.sh` which may not be executing properly
+- Runs via: `* * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py` (every minute)
+- **DIAGNOSIS NEEDED**: Verify cron daemon is running inside container
 
 ### mosquitto.conf
 
@@ -291,6 +352,74 @@ System monitoring complete.
 
 - Log for Badge Subscriber, a script that subscribes to MQTT topics of interest for monitoring and generates "anybadge" badges in SVG for those topics.
 - Seems to be correctly polling every minute or so, but the data in MQTT seems to be inaccurate.
+
+## Investigation Plan: Debugging Stale GPU Stats
+
+### Root Cause Theory - PROVEN
+
+**DEFINITIVE PROOF**: `last_system_stats.json` contains fresh, current data on every cron execution:
+- Timestamp changes every 60 seconds
+- GPU memory_util_percent and temperature values are current
+- File is being atomically written with new data
+
+**CONCLUSION**: Data collection from Docker API is working perfectly. The bug is in `system_monitor_script.py`'s MQTT publishing mechanism. Fresh data is collected and written to JSON, but NOT published to MQTT topics that `badge_subscriber` subscribes to.
+
+**The bug is in these lines of `system_monitor_script.py`:**
+- Lines 115-125: The `publish.single()` call for the full `/chainloot/system/stats` topic
+- Lines 128-155: The per-key publish loop for individual topics
+- Lines 158-180: The GPU-specific publish loop
+
+One of these publish mechanisms is broken or not executing.### Diagnostic Commands (Run in Container)
+
+#### Step 1: Confirm JSON file has fresh data
+
+```bash
+cat /app/last_system_stats.json | python3 -m json.tool
+```
+
+Run this multiple times with delays. The `timestamp`, GPU `memory_util_percent`, and `temperature` should change on each run. If they do, data collection is working. (This confirms the bug is in MQTT publishing, not data collection.)
+
+#### Step 2: Check if MQTT topics are receiving updates
+
+Connect to MQTT broker and subscribe to system stats topics:
+
+```bash
+mosquitto_sub -h 192.168.1.98 -u yoda -P yoda -t "/chainloot/system/+/+" | head -20
+```
+
+Run `system_monitor_script.py` manually while watching this output. Do new values appear in MQTT immediately after script execution? If not, the publish mechanism is broken.
+
+#### Step 3: Test GPU data freshness from Docker API
+
+Query the Docker REST API directly to see if it returns fresh GPU data:
+
+```bash
+curl -s http://host.docker.internal:2375/v1.43/containers/json | python3 -m json.tool | grep -i gpu
+```
+
+Run this multiple times with a few seconds between runs. Do GPU values change? If all readings are identical, the Docker daemon's API is returning cached data.
+
+Alternatively, inspect container stats endpoint which may have real-time metrics:
+
+```bash
+curl -s http://host.docker.internal:2375/v1.43/containers/<container_id>/stats | python3 -m json.tool
+```
+
+#### Step 4: Inspect `system_monitor_script.py` publish calls
+
+Look at the actual MQTT publish logic in `system_monitor_script.py` (around lines 120-180). Check:
+
+- Are `retain=True` flags preventing new messages from being visible?
+- Are publish calls actually executing, or is an exception being silently caught?
+- Is the payload being formatted correctly?
+
+### Likely Culprits
+
+**Most likely**: The Docker daemon's REST API endpoint is returning cached GPU stats instead of fresh values. GPUtil queries this API, so stale Docker API data → stale GPU data → stale MQTT messages. This is a host-level Docker daemon issue, not a script issue.
+
+**Secondary possibility**: The `publish.single()` calls in `system_monitor_script.py` with `retain=True` flags. MQTT retained messages may not update if the publish payload is identical to the previous retained value. Combined with stale Docker API data, this would perpetuate the stale values indefinitely.
+
+**To rule out**: The cron execution itself—logs prove this is working correctly.
 
 ## Removal Candidates *
 

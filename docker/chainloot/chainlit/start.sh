@@ -39,7 +39,7 @@ echo "Badge subscriber started with PID: $BADGE_PID"
 
 # Add cron job to run container monitor every 2 minutes
 echo "Setting up container monitoring cron job..."
-echo "*/2 * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
+echo "* * * * * /usr/local/bin/python3 /app/lib/system_monitor_script.py >> /app/system_monitor.log 2>&1" >> /etc/cron.d/container_monitor
 chmod 0644 /etc/cron.d/container_monitor
 crontab /etc/cron.d/container_monitor
 

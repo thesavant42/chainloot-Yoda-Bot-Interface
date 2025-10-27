@@ -1,4 +1,9 @@
+![gpu_mem](/public/badges/gpu_mem.svg)
+![gpu_temp](/public/badges/gpu_temp.svg)
+
 ### API Docs
+
+
 
 - **SwaggerDoc:**
  [http://192.168.1.98:7778/docs#/](http://192.168.1.98:7778/docs#/)

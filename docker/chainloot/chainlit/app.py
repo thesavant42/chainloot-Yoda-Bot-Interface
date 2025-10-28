@@ -66,7 +66,6 @@ from lib.config_handler import (
 )
 from lib.mcp_server_manager import mcp_manager
 from lib.dynamic_mcp_manager import dynamic_mcp_manager
-from lib.mcp_tool_processor import tool_processor
 from lib.container_monitor import get_container_monitor
 from chainlit.config import (
     #ChainlitConfigOverrides,
@@ -148,33 +147,9 @@ PROFILE_DEFAULTS = {
 
 async def process_user_input_and_respond(user_text: str):
     """
-    Handles the core logic: checks for MCP tools first, then gets LLM response, sends text, and generates TTS audio.
+    Handles the core logic: gets LLM response, sends text, and generates TTS audio.
     """
-    # 1. Check if the user input requires MCP tools
-    tool_result = None
-    active_manager = get_active_mcp_manager()
-    
-    if await tool_processor.should_use_tools(user_text):
-        if active_manager.initialized:
-            logger.info(f"MCP tool detected for input: {user_text}")
-            tool_result = await tool_processor.process_with_tools(user_text)
-            
-            if tool_result:
-                # Send the tool result directly
-                character = cl.user_session.get("character")
-                text_msg = await cl.Message(
-                    content=tool_result,
-                    author=character
-                ).send()
-                
-                # Generate audio for the tool result
-                await generate_audio_response(tool_result, text_msg.id)
-                return  # Exit early, tool handled the request
-        else:
-            # MCP tools not ready yet, log and fall back to LLM silently
-            logger.info(f"MCP tools requested but not ready yet, falling back to LLM for: {user_text}")
-
-    # 2. Get settings from the user session for LLM processing
+    # 1. Get settings from the user session for LLM processing
     selected_model = cl.user_session.get("selected_model")
     system_prompt = cl.user_session.get("system_prompt")
     llm_temp = cl.user_session.get("llm_temp")

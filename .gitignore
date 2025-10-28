@@ -102,5 +102,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-docker/chainloot/chainlit/public/badges/
+docker/chainloot/chainlit/public/badges/*.svg
 docker/chainloot/chainlit/last_system_stats.json
+/docker/chainloot/chainlit/public/badges
+docker/chainloot/chainlit/public/badges/*.svg

@@ -28,11 +28,9 @@ async def process_message_for_tts(message: str, persona: str) -> list[dict]:
     processed_results = []
 
     for chunk, sentiment in zip(chunks, sentiments):
-        # Scrub unsafe characters from the chunk
-        scrubbed_chunk = scrub_unsafe_characters(chunk)
-        
-        # Remove asterisk actions for TTS (e.g., *action* -> removed)
-        tts_chunk = re.sub(r'\*.*?\*', '', scrubbed_chunk).strip()
+        # Keep original chunk intact for tool detection
+        # Only clean for TTS at the very end
+        tts_chunk = chunk  # Don't clean yet - preserve tool call format
         
         # Print debug statement
         if "error" not in sentiment:

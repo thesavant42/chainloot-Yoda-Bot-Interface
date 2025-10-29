@@ -2,19 +2,15 @@
 
 # CRITICAL: This must be the very first thing that happens
 # Apply S3 client fix before ANY other imports
-print("Applying S3StorageClient fix...")
-
 # Import our custom storage client
 from lib.custom_s3_storage import FixedS3StorageClient
 
 # More aggressive monkey patching approach
 import sys
-
 # Clear any cached modules related to chainlit storage
 modules_to_clear = [k for k in sys.modules.keys() if 'chainlit.data.storage' in k]
 for module in modules_to_clear:
     del sys.modules[module]
-
 # Patch the module at import time
 def patch_s3_storage():
     """Apply the patch when the module is imported"""
@@ -28,13 +24,11 @@ def patch_s3_storage():
     except Exception as e:
         print(f"Failed to patch S3StorageClient: {e}")
         return False
-
 # Apply the patch immediately
 patch_success = patch_s3_storage()
 if not patch_success:
     print("Patch failed, but continuing...")
-
-print("S3StorageClient patch applied, proceeding with imports...")
+# print("S3StorageClient patch applied, proceeding with imports...")
 
 import chainlit as cl
 import logging
@@ -47,9 +41,13 @@ import os
 from lib.mqtt_publisher import get_mqtt_publisher
 from lib.stt import handle_audio_chunk, handle_audio_end
 from lib.tts import generate_speech
+from lib.tts_response import generate_audio_response
 from lib.text_utils import scrub_unsafe_characters
 from lib.message_processor import process_message_for_tts
 from typing import Dict, Any, List
+
+# Import audio handlers (this registers the Chainlit event handlers)
+import lib.audio_handler
 
 from dotenv import load_dotenv
 from lib.config_handler import (
@@ -71,9 +69,6 @@ from chainlit.config import (
     UISettings,
 )
 
-# MCP imports
-from mcp import ClientSession
-
 # Badge generation imports
 import anybadge
 import paho.mqtt.client as mqtt
@@ -81,25 +76,34 @@ import threading
 
 config_path = "config/config.json"
 
+## BOT CONFIG LIBRARY CANDIDATES
+### Bot Interaction Functions
+
+# This should be generated programatically by a function.
+# Let's move to lib\bot-config.py
+# Create a function that spouts out this starters block
+# based on the starters configured in the library, to automatically update while keeping the main app.py leah
 starters = [
     cl.Starter(
-        label="Say hi",
-        message="Hello there, it's wonderful to see you again!",
+        label="time",
+        message="what is the current time in Los Angeles? Use mcp.",
         icon="https://picsum.photos/300",
     ),
     cl.Starter(
-        label="MQTT",
-        message="Listen for any MQTT message",
+        label="Fetch",
+        message="Fetch the title from http://ifconfig.me/ using mcp.",
         icon="https://picsum.photos/350",
     ),
 ]
 
+# Can we move this to the bot-config.py libary?
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
     "Yoda": {
         "system_prompt": "You are a helpful AI assistant, who completely believes that he actually *is* Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. Never break character.",
         "default_voice": "voices/chatterbox/yoda.wav",
     },
+    # I also want to rename "AI" to "3PO", but a search-and-replace would be DANGEROUS
     "AI": {
         "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief.",
         "default_voice": "voices/chatterbox/3po.wav",
@@ -110,12 +114,42 @@ PROFILE_DEFAULTS = {
     },
 }
 
+# This should be migrated out of app.py into the bot-config.py library
+### Chat Profile Functions ###
+# This function is critical for the settings UI widget, that must be updagted also to point to the new location
+
+@cl.set_chat_profiles
+async def chat_profile():
+    return [
+        cl.ChatProfile(
+            name="Yoda",
+            markdown_description="An AI who thinks he is a Jedi Master",
+            starters=starters,
+            icon="/public/avatars/yoda.png",
+            
+        ),
+        cl.ChatProfile(
+            name="AI",
+            markdown_description="Human <-> Cyborg Relations",
+            starters=starters,
+            icon="/public/avatars/ai.png",
+        ),
+        cl.ChatProfile(
+            name="Stark",
+            markdown_description="Billionaire genius playboy philanthropist.",
+            starters=starters,
+            icon="/public/avatars/stark.png",
+        ),
+    ]
+
+
+# END BOT CONFIG SECTION
+
 ### Main Chat Logic Here ###
 
 async def process_user_input_and_respond(user_text: str):
     """
     Handles the core logic: gets LLM response, sends text, and generates TTS audio.
-    Now supports MCP tool calling.
     """
     # 1. Get settings from the user session for LLM processing
     selected_model = cl.user_session.get("selected_model")
@@ -126,20 +160,7 @@ async def process_user_input_and_respond(user_text: str):
     if reasoning_enabled:
         system_prompt += " Think step by step before responding."
 
-    # 2. Get MCP tools from all connections
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-    all_tools = []
-    tool_to_connection = {}  # Map tool names to their MCP connection
-    
-    for connection_name, connection_tools in mcp_tools.items():
-        for tool in connection_tools:
-            all_tools.append(tool)
-            tool_to_connection[tool["name"]] = connection_name
-    
-    if all_tools:
-        logger.info(f"Found {len(all_tools)} MCP tools available for this request")
-
-    # 3. Prepare LLM request parameters
+    # 2. Prepare LLM request parameters
     llm_start_time = time.time()
     
     request_params = {
@@ -152,20 +173,6 @@ async def process_user_input_and_respond(user_text: str):
         "max_tokens": max_tokens,
     }
     
-    # Add tools if available (OpenAI-compatible format)
-    if all_tools:
-        request_params["tools"] = [
-            {
-                "type": "function",
-                "function": {
-                    "name": tool["name"],
-                    "description": tool["description"],
-                    "parameters": tool["input_schema"]
-                }
-            }
-            for tool in all_tools
-        ]
-    
     # Add context length for Ollama if configured
     provider = config.get("provider", "lm-studio")
     if provider == "ollama":
@@ -177,7 +184,6 @@ async def process_user_input_and_respond(user_text: str):
                 logger.info(f"Using Ollama context length: {context_length}")
             except ValueError:
                 logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}, ignoring")
-    
     try:
         response = await get_client().chat.completions.create(**request_params)
         llm_end_time = time.time()
@@ -188,39 +194,6 @@ async def process_user_input_and_respond(user_text: str):
             raise ValueError("Invalid response structure from LLM API")
         
         choice = response.choices[0]
-        
-        # Check if LLM wants to call tools
-        if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
-            logger.info(f"LLM requested {len(choice.message.tool_calls)} tool calls")
-            
-            # Execute all requested tool calls
-            tool_results = []
-            for tool_call in choice.message.tool_calls:
-                tool_name = tool_call.function.name
-                tool_args = json.loads(tool_call.function.arguments)
-                
-                # Find which MCP connection has this tool
-                mcp_name = tool_to_connection.get(tool_name)
-                if not mcp_name:
-                    logger.error(f"Tool {tool_name} not found in any MCP connection")
-                    continue
-                
-                # Execute the tool via our handler
-                result = await call_mcp_tool(tool_name, tool_args, mcp_name)
-                tool_results.append({
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": tool_name,
-                    "content": json.dumps(result)
-                })
-            
-            # Make second LLM call with tool results
-            request_params["messages"].append(choice.message)
-            request_params["messages"].extend(tool_results)
-            
-            logger.info("Making second LLM call with tool results")
-            response = await get_client().chat.completions.create(**request_params)
-            choice = response.choices[0]
         
         if not choice.message or not choice.message.content:
             raise ValueError("Empty response content from LLM API")
@@ -251,138 +224,6 @@ async def process_user_input_and_respond(user_text: str):
        
     # 5. Generate and send audio response
     await generate_audio_response(scrubbed_response, text_msg.id)
-
-async def generate_audio_response(text: str, message_id: str):
-    """
-    Generate and send TTS audio for a given text.
-    Extracted into separate function for reuse.
-    """
-    selected_voice = cl.user_session.get("selected_voice")
-    tts_speed = cl.user_session.get("tts_speed")
-    tts_exaggeration = cl.user_session.get("tts_exaggeration")
-    
-
-    tts_config_params = {
-        "cfg_weight": config.get("tts_cfg_weight"),
-        "temperature": config.get("tts_temperature"),
-        "device": config.get("tts_device"),
-        "dtype": config.get("tts_dtype"),
-        "seed": config.get("tts_seed"),
-        "chunked": config.get("tts_chunked"),
-        "use_compilation": config.get("tts_use_compilation"),
-        "max_new_tokens": config.get("tts_max_new_tokens"),
-        "max_cache_len": config.get("tts_max_cache_len"),
-        "desired_length": config.get("tts_desired_length"),
-        "max_length": config.get("tts_max_length"),
-        "halve_first_chunk": config.get("tts_halve_first_chunk"),
-        "cpu_offload": config.get("tts_cpu_offload"),
-        "cache_voice": config.get("tts_cache_voice"),
-        "tokens_per_slice": config.get("tts_tokens_per_slice"),
-        "remove_milliseconds": config.get("tts_remove_milliseconds"),
-        "remove_milliseconds_start": config.get("tts_remove_milliseconds_start"),
-        "chunk_overlap_method": config.get("tts_chunk_overlap_method")
-    }
-
-    tts_start_time = time.time()
-    audio_buffer = await generate_speech(
-        tts_client=tts_client,
-        text=text,
-        voice=selected_voice,
-        tts_model=config.get("tts_model_name"),
-        response_format=config.get("tts_response_format"),
-        speed=tts_speed,
-        exaggeration=tts_exaggeration,
-        tts_config=tts_config_params
-    )
-    tts_end_time = time.time()
-    logger.info(f"PERF: TTS call took {tts_end_time - tts_start_time:.2f} seconds.")
-
-    await cl.Audio(
-        name="response_audio.wav",
-        content=audio_buffer,
-        mime="audio/wav",
-        auto_play=True
-    ).send(for_id=message_id)
-
-### MCP HANDLERS ###
-
-@cl.on_mcp_connect
-async def on_mcp_connect(connection, session: ClientSession):
-    """
-    Called when an MCP connection is established.
-    This handler is REQUIRED for MCP to work.
-    """
-    logger.info(f"MCP connection established: {connection.name}")
-    
-    try:
-        # List available tools from this MCP server
-        result = await session.list_tools()
-        
-        # Process tool metadata into a format suitable for LLM function calling
-        tools = [{
-            "name": t.name,
-            "description": t.description,
-            "input_schema": t.inputSchema,
-        } for t in result.tools]
-        
-        logger.info(f"Retrieved {len(tools)} tools from {connection.name}")
-        
-        # Store tools in user session, organized by connection name
-        mcp_tools = cl.user_session.get("mcp_tools", {})
-        mcp_tools[connection.name] = tools
-        cl.user_session.set("mcp_tools", mcp_tools)
-        
-        # Log tool names for debugging
-        tool_names = [t["name"] for t in tools]
-        logger.info(f"Tools from {connection.name}: {', '.join(tool_names)}")
-        
-    except Exception as e:
-        logger.error(f"Error connecting to MCP server {connection.name}: {e}")
-
-@cl.on_mcp_disconnect
-async def on_mcp_disconnect(name: str, session: ClientSession):
-    """
-    Called when an MCP connection is terminated.
-    This handler is optional but recommended for cleanup.
-    """
-    logger.info(f"MCP connection disconnected: {name}")
-    
-    try:
-        # Remove tools from session
-        mcp_tools = cl.user_session.get("mcp_tools", {})
-        if name in mcp_tools:
-            del mcp_tools[name]
-            cl.user_session.set("mcp_tools", mcp_tools)
-            logger.info(f"Cleaned up tools for {name}")
-    except Exception as e:
-        logger.error(f"Error during MCP disconnect cleanup for {name}: {e}")
-
-@cl.step(type="tool")
-async def call_mcp_tool(tool_name: str, tool_input: dict, mcp_name: str):
-    """
-    Execute an MCP tool.
-    
-    Args:
-        tool_name: Name of the tool to execute
-        tool_input: Input parameters for the tool
-        mcp_name: Name of the MCP connection to use
-    """
-    logger.info(f"Executing MCP tool: {tool_name} on {mcp_name}")
-    
-    try:
-        # Get the MCP session for this connection
-        mcp_session, _ = cl.context.session.mcp_sessions.get(mcp_name)
-        
-        # Call the tool
-        result = await mcp_session.call_tool(tool_name, tool_input)
-        
-        logger.info(f"Tool {tool_name} executed successfully")
-        return result
-        
-    except Exception as e:
-        error_msg = f"Error executing tool {tool_name}: {str(e)}"
-        logger.error(error_msg)
-        return {"error": error_msg}
 
 ### Auth HANDLING ###
 
@@ -581,39 +422,9 @@ async def send_updated_settings_ui(updated_models):
 def on_stop():
     print("The user stopped the task!")
 
-### Chat Profile Functions ###
-
-@cl.set_chat_profiles
-async def chat_profile():
-    return [
-        cl.ChatProfile(
-            name="Yoda",
-            markdown_description="An AI who thinks he is a Jedi Master",
-            starters=starters,
-            icon="/public/avatars/yoda.png",
-            
-        ),
-        cl.ChatProfile(
-            name="AI",
-            markdown_description="Human <-> Cyborg Relations",
-            starters=starters,
-            icon="/public/avatars/ai.png",
-        ),
-        cl.ChatProfile(
-            name="Stark",
-            markdown_description="Billionaire genius playboy philanthropist.",
-            starters=starters,
-            icon="/public/avatars/stark.png",
-        ),
-    ]
-
-
 @cl.on_chat_start
 async def on_chat_start():
-    print("A new chat session has started!")
-    
-
-    
+    print("A new chat session has started!")  
     # Start container monitoring for real-time MQTT publishing
     container_monitor = get_container_monitor()
     container_monitor.start_monitoring(interval=30)  # Publish every 30 seconds
@@ -792,44 +603,6 @@ async def on_message(message: cl.Message):
             return
         
         await process_user_input_and_respond(message.content)
-
-### Audio Handling ###
-
-@cl.on_audio_chunk
-async def on_audio_chunk(chunk):
-    """Handle audio chunks from microphone recording."""
-    # Use the imported handle_audio_chunk function from lib.stt
-    updated_buffer = await handle_audio_chunk(chunk, cl.user_session.get("audio_buffer"))
-    cl.user_session.set("audio_buffer", updated_buffer)
-
-@cl.on_audio_start
-async def on_audio_start():
-    logger.info(f"AUDIO DIAG: on_audio_start triggered - Session ID: {cl.context.session.id}")
-    return True
-
-@cl.on_audio_end
-async def on_audio_end():
-    """Transcribes audio, then calls the core logic function."""
-    audio_buffer = cl.user_session.get("audio_buffer")
-    try:
-        # Perform STT
-        user_text = await handle_audio_end(
-            stt_client=stt_client, 
-            audio_buffer=audio_buffer, 
-            stt_model=config.get("whisper_model")
-        )
-
-        if not user_text:
-            await cl.Message(content="No speech detected in audio.").send()
-            return
-
-        await cl.Message(content=user_text, author="You").send()
-
-        await process_user_input_and_respond(user_text)
-
-    except Exception as e:
-        logger.error(f"AUDIO DIAG: Error in on_audio_end: {str(e)}")
-        await cl.Message(content=f"Error processing audio: {str(e)}").send()
 
 # Add cleanup on app shutdown
 import atexit

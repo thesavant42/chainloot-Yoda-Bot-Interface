@@ -30,12 +30,15 @@ import logging
 logger = logging.getLogger(__name__)
 import asyncio
 import os
+from mcp import ClientSession
 from lib.mqtt_publisher import get_mqtt_publisher
 import lib.audio_handler
 import lib.bot_config
 import lib.settings
 import lib.auth
 from lib.chat import ChatProcessor, process_user_input_and_respond, initialize_chat_session, handle_chat_end, validate_session_model
+from lib.mcp_handler import store_mcp_tools
+
 from dotenv import load_dotenv
 from lib.container_monitor import get_container_monitor
 from chainlit.config import (FeaturesSettings, UISettings)
@@ -74,6 +77,24 @@ async def on_message(message: cl.Message):
             await cl.Message(content="No valid model available. Please check your provider settings and ensure models are loaded.").send()
             return        
         await process_user_input_and_respond(message.content)
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """Handle MCP connection - store available tools"""
+    result = await session.list_tools()
+    tools = [{
+        "name": t.name,
+        "description": t.description,
+        "input_schema": t.inputSchema,
+    } for t in result.tools]
+    
+    store_mcp_tools(connection.name, tools)
+    print(f"MCP connected: {connection.name} with {len(tools)} tools")
+
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Handle MCP disconnection"""
+    print(f"MCP disconnected: {name}")
 
 async def cleanup_on_exit():
     """Clean up MQTT on app shutdown"""

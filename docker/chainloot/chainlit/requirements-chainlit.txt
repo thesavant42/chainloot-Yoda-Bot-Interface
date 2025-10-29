@@ -12,8 +12,8 @@ transformers==4.44.2       # ML transformers (pinned for compatibility with PyTo
 ## Data Layer
 asyncpg             # PostgreSQL async client
 boto3               # AWS SDK, Data layer attachment storage
-pyjson              # JSON utilities, MCP + More
-beautifulsoup4      # HTML parsing, MCP + More
+pyjson              # JSON utilities
+beautifulsoup4      # HTML parsing
 Cython              # C extensions
 spacy==3.6.1        # NLP library
 
@@ -23,13 +23,13 @@ paho-mqtt>=1.6.0    # MQTT client for emotion publishing (MQTT 5.0 support)
 ## Chainlit-specific requirements
 chainlit            # Core Requirement
 
-## MCP 
-mcp                 # MCP core
-mcp-proxy           # Needed to proxy httpse to/from stdio
-mcp-server-time     # MCP server for time
-mcp-server-fetch    # MCP server for web fetching
-mcp-server-git      # MCP server for git operations
-wikipedia-mcp       # MCP server for Wikipedia
+## MCP Core and Servers
+mcp                 # MCP core for handlers
+mcp-proxy           # Proxy for HTTP/SSE transport
+mcp-server-time     # Time utilities server
+mcp-server-fetch    # HTTP fetch server
+mcp-server-git      # Git operations server
+wikipedia-mcp       # Wikipedia server
 
 ## Datalayer 
 prisma              # Database ORM for datalayer

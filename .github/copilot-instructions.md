@@ -159,7 +159,7 @@ npx @brave/brave-search-mcp-server  # Web search
 **Container-Specific Organization**: Each service under `docker/chainloot/` maintains its own folder with Dockerfiles, environment files, and configuration. Do not consolidate or share container-specific files (like requirements.txt or .env files) across services, as this structure preserves isolation and simplifies troubleshooting.
 
 ### Code Style Notes
-- **No Emojis EVER**: Emojis are strictly forbidden in code, comments, commit messages, documentation, and chat communications
+- **ABSOLUTE PROHIBITION ON EMOJIS**: Emojis, emoticons, Unicode symbols, checkmarks, X marks, and ANY visual characters are STRICTLY FORBIDDEN in ALL code, comments, commit messages, documentation, chat communications, and any other text. Use only plain text words like "WORKING", "BROKEN", "SUCCESS", "FAILED", "TODO", etc.
 - **Async First**: All I/O operations use async/await
 - **Session State**: User preferences stored in `cl.user_session`
 - **Monkey Patching**: Custom S3 client injected for LocalStack compatibility

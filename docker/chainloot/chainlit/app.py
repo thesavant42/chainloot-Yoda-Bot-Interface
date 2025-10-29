@@ -37,8 +37,8 @@ if not patch_success:
 print("S3StorageClient patch applied, proceeding with imports...")
 
 import chainlit as cl
-from mcp import ClientSession
-from chainlit.logger import logger
+import logging
+logger = logging.getLogger(__name__)
 import time
 import asyncio
 from chainlit.input_widget import Select, Slider, Switch
@@ -50,8 +50,7 @@ from lib.tts import generate_speech
 from lib.text_utils import scrub_unsafe_characters
 from lib.message_processor import process_message_for_tts
 from typing import Dict, Any, List
-from mcp import ClientSession
-from mcp.types import CallToolResult, TextContent
+
 from dotenv import load_dotenv
 from lib.config_handler import (
     config,
@@ -64,13 +63,11 @@ from lib.config_handler import (
     fetch_available_voices,
     get_client,
 )
-from lib.mcp_server_manager import mcp_manager
-from lib.dynamic_mcp_manager import dynamic_mcp_manager
+
 from lib.container_monitor import get_container_monitor
 from chainlit.config import (
     #ChainlitConfigOverrides,
     FeaturesSettings,
-    McpFeature,
     UISettings,
 )
 
@@ -80,39 +77,6 @@ import paho.mqtt.client as mqtt
 import threading
 
 config_path = "config/config.json"
-mcp_tools_cache = {}
-
-def get_active_mcp_manager():
-    """Get the active MCP manager (dynamic if config exists, otherwise legacy)"""
-    if os.path.exists("config/mcp_servers.json"):
-        return dynamic_mcp_manager
-    else:
-        return mcp_manager
-
-# Pre-initialize MCP servers on app startup (before any browser connections)
-async def initialize_mcp_on_startup():
-    """Initialize MCP servers when the app starts, before users connect"""
-    try:
-        print("Pre-initializing MCP servers for optimal user experience...")
-        
-        # Check if dynamic configuration exists
-        if os.path.exists("config/mcp_servers.json"):
-            print("Using dynamic MCP configuration (config/mcp_servers.json)")
-            await dynamic_mcp_manager.initialize()
-            tool_count = len(dynamic_mcp_manager.get_available_tools())
-            print(f"Dynamic MCP initialization complete! {tool_count} tools ready.")
-        else:
-            print("Using legacy MCP configuration (hardcoded)")
-            await mcp_manager.initialize()
-            tool_count = len(mcp_manager.get_available_tools())
-            print(f"Legacy MCP initialization complete! {tool_count} tools ready.")
-            
-    except Exception as e:
-        print(f"MCP pre-initialization failed: {e}")
-        print("Users can still chat, but advanced tools may not be available.")
-
-# Note: Removed background thread initialization to avoid event loop conflicts
-# MCP will now initialize on first chat session instead
 
 starters = [
     cl.Starter(
@@ -130,15 +94,15 @@ starters = [
 # Canonical per-profile configuration (authoritative, no implicit fallbacks)
 PROFILE_DEFAULTS = {
     "Yoda": {
-        "system_prompt": "You are a helpful AI assistant, who completely believes that he actually *is* Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. You can access tools using MCP  servers. Never break character.",
+        "system_prompt": "You are a helpful AI assistant, who completely believes that he actually *is* Yoda, wise Jedi Master. Reply in Yoda-speak. No more than 2 sentences per message. Never break character.",
         "default_voice": "voices/chatterbox/yoda.wav",
     },
     "AI": {
-        "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief.  You can access tools using MCP servers.",
+        "system_prompt": "You are a 3-P-O, a helpful AI assistant. Your responses are concise and brief.",
         "default_voice": "voices/chatterbox/3po.wav",
     },
     "Stark": {
-        "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message. You can access tools using MCP servers.",
+        "system_prompt": "You are a helpful but snarky AI assistant. Your name is Tony. No more than 2 sentences per message.",
         "default_voice": "voices/chatterbox/stark.wav",
     },
 }
@@ -502,22 +466,7 @@ async def chat_profile():
 async def on_chat_start():
     print("A new chat session has started!")
     
-    # Initialize MCP in the main event loop to avoid "Event loop is closed" errors
-    active_manager = get_active_mcp_manager()
-    if not active_manager.initialized:
-        try:
-            print("Initializing MCP servers in main event loop...")
-            await initialize_mcp_on_startup()
-        except Exception as e:
-            logger.error(f"Failed to initialize MCP servers: {e}")
-    
-    # Log MCP initialization status to console only
-    if active_manager.initialized:
-        tool_count = len(active_manager.get_available_tools())
-        manager_type = "Dynamic" if active_manager == dynamic_mcp_manager else "Legacy"
-        logger.info(f"{manager_type} MCP servers ready - {tool_count} tools available")
-    else:
-        logger.info("MCP servers not yet initialized - basic chat ready")
+
     
     # Start container monitoring for real-time MQTT publishing
     container_monitor = get_container_monitor()
@@ -680,14 +629,7 @@ async def on_chat_end():
     container_monitor = get_container_monitor()
     container_monitor.stop_monitoring()
     logger.info("Container monitoring stopped")
-    
-    # Clean up MCP resources if this is the last session
-    try:
-        # Note: We don't close MCP sessions on each chat end since they're shared server-side
-        # MCP sessions will be cleaned up when the server shuts down
-        logger.info("Chat session ended")
-    except Exception as e:
-        logger.error(f"Error during chat end cleanup: {e}")
+    logger.info("Chat session ended")
 
 @cl.on_message
 async def on_message(message: cl.Message):
@@ -748,14 +690,7 @@ import atexit
 import signal
 
 async def cleanup_on_exit():
-    """Clean up MCP resources and MQTT on app shutdown"""
-    try:
-        active_manager = get_active_mcp_manager()
-        await active_manager.cleanup()
-        logger.info("MCP resources cleaned up successfully")
-    except Exception as e:
-        logger.error(f"Error cleaning up MCP resources: {e}")
-    
+    """Clean up MQTT on app shutdown"""
     try:
         mqtt_pub = get_mqtt_publisher()
         mqtt_pub.disconnect()

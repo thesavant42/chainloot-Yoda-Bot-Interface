@@ -7,10 +7,7 @@ cleanup() {
         echo "Stopping Chainlit server (PID: $CHAINLIT_PID)..."
         kill $CHAINLIT_PID 2>/dev/null
     fi
-    if [ ! -z "$MQTT_PID" ]; then
-        echo "Stopping MQTT MCP server (PID: $MQTT_PID)..."
-        kill $MQTT_PID 2>/dev/null
-    fi
+
     # Remove cron job
     echo "Removing container monitoring cron job..."
     rm -f /etc/cron.d/container_monitor
@@ -24,12 +21,6 @@ trap cleanup SIGTERM SIGINT
 # Run database migrations
 prisma migrate deploy --schema=./database/schema.prisma
 prisma generate --schema=./database/schema.prisma
-
-# Start MQTT MCP server in background
-echo "Starting MQTT MCP server on port 8100..."
-mqtt-mcp &
-MQTT_PID=$!
-echo "MQTT MCP server started with PID: $MQTT_PID"
 
 # Start badge subscriber in background
 echo "Starting badge subscriber..."

@@ -107,3 +107,8 @@ docker/chainloot/chainlit/public/badges/*.svg
 docker/chainloot/chainlit/last_system_stats.json
 /docker/chainloot/chainlit/public/badges
 docker/chainloot/chainlit/public/badges/*.svg
+/docker/chainloot/chainlit/last_system_stats.json
+/docker/chainloot/chainlit/public/badges/cpu.svg
+/docker/chainloot/chainlit/public/badges/gpu_mem.svg
+/docker/chainloot/chainlit/public/badges/gpu_temp.svg
+/docker/chainloot/chainlit/public/badges/mem.svg

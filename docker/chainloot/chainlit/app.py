@@ -71,6 +71,9 @@ from chainlit.config import (
     UISettings,
 )
 
+# MCP imports
+from mcp import ClientSession
+
 # Badge generation imports
 import anybadge
 import paho.mqtt.client as mqtt
@@ -237,6 +240,86 @@ async def generate_audio_response(text: str, message_id: str):
         mime="audio/wav",
         auto_play=True
     ).send(for_id=message_id)
+
+### MCP HANDLERS ###
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """
+    Called when an MCP connection is established.
+    This handler is REQUIRED for MCP to work.
+    """
+    logger.info(f"MCP connection established: {connection.name}")
+    
+    try:
+        # List available tools from this MCP server
+        result = await session.list_tools()
+        
+        # Process tool metadata into a format suitable for LLM function calling
+        tools = [{
+            "name": t.name,
+            "description": t.description,
+            "input_schema": t.inputSchema,
+        } for t in result.tools]
+        
+        logger.info(f"Retrieved {len(tools)} tools from {connection.name}")
+        
+        # Store tools in user session, organized by connection name
+        mcp_tools = cl.user_session.get("mcp_tools", {})
+        mcp_tools[connection.name] = tools
+        cl.user_session.set("mcp_tools", mcp_tools)
+        
+        # Log tool names for debugging
+        tool_names = [t["name"] for t in tools]
+        logger.info(f"Tools from {connection.name}: {', '.join(tool_names)}")
+        
+    except Exception as e:
+        logger.error(f"Error connecting to MCP server {connection.name}: {e}")
+
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """
+    Called when an MCP connection is terminated.
+    This handler is optional but recommended for cleanup.
+    """
+    logger.info(f"MCP connection disconnected: {name}")
+    
+    try:
+        # Remove tools from session
+        mcp_tools = cl.user_session.get("mcp_tools", {})
+        if name in mcp_tools:
+            del mcp_tools[name]
+            cl.user_session.set("mcp_tools", mcp_tools)
+            logger.info(f"Cleaned up tools for {name}")
+    except Exception as e:
+        logger.error(f"Error during MCP disconnect cleanup for {name}: {e}")
+
+@cl.step(type="tool")
+async def call_mcp_tool(tool_name: str, tool_input: dict, mcp_name: str):
+    """
+    Execute an MCP tool.
+    
+    Args:
+        tool_name: Name of the tool to execute
+        tool_input: Input parameters for the tool
+        mcp_name: Name of the MCP connection to use
+    """
+    logger.info(f"Executing MCP tool: {tool_name} on {mcp_name}")
+    
+    try:
+        # Get the MCP session for this connection
+        mcp_session, _ = cl.context.session.mcp_sessions.get(mcp_name)
+        
+        # Call the tool
+        result = await mcp_session.call_tool(tool_name, tool_input)
+        
+        logger.info(f"Tool {tool_name} executed successfully")
+        return result
+        
+    except Exception as e:
+        error_msg = f"Error executing tool {tool_name}: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg}
 
 ### Auth HANDLING ###
 

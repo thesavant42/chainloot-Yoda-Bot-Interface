@@ -115,6 +115,7 @@ PROFILE_DEFAULTS = {
 async def process_user_input_and_respond(user_text: str):
     """
     Handles the core logic: gets LLM response, sends text, and generates TTS audio.
+    Now supports MCP tool calling.
     """
     # 1. Get settings from the user session for LLM processing
     selected_model = cl.user_session.get("selected_model")
@@ -125,10 +126,22 @@ async def process_user_input_and_respond(user_text: str):
     if reasoning_enabled:
         system_prompt += " Think step by step before responding."
 
-    # 3. Get LLM response
+    # 2. Get MCP tools from all connections
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    all_tools = []
+    tool_to_connection = {}  # Map tool names to their MCP connection
+    
+    for connection_name, connection_tools in mcp_tools.items():
+        for tool in connection_tools:
+            all_tools.append(tool)
+            tool_to_connection[tool["name"]] = connection_name
+    
+    if all_tools:
+        logger.info(f"Found {len(all_tools)} MCP tools available for this request")
+
+    # 3. Prepare LLM request parameters
     llm_start_time = time.time()
     
-    # Prepare common parameters
     request_params = {
         "model": selected_model,
         "messages": [
@@ -138,6 +151,20 @@ async def process_user_input_and_respond(user_text: str):
         "temperature": llm_temp,
         "max_tokens": max_tokens,
     }
+    
+    # Add tools if available (OpenAI-compatible format)
+    if all_tools:
+        request_params["tools"] = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool["name"],
+                    "description": tool["description"],
+                    "parameters": tool["input_schema"]
+                }
+            }
+            for tool in all_tools
+        ]
     
     # Add context length for Ollama if configured
     provider = config.get("provider", "lm-studio")
@@ -160,17 +187,53 @@ async def process_user_input_and_respond(user_text: str):
         if not response or not hasattr(response, 'choices') or not response.choices:
             raise ValueError("Invalid response structure from LLM API")
         
-        if not response.choices[0].message or not response.choices[0].message.content:
+        choice = response.choices[0]
+        
+        # Check if LLM wants to call tools
+        if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+            logger.info(f"LLM requested {len(choice.message.tool_calls)} tool calls")
+            
+            # Execute all requested tool calls
+            tool_results = []
+            for tool_call in choice.message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                
+                # Find which MCP connection has this tool
+                mcp_name = tool_to_connection.get(tool_name)
+                if not mcp_name:
+                    logger.error(f"Tool {tool_name} not found in any MCP connection")
+                    continue
+                
+                # Execute the tool via our handler
+                result = await call_mcp_tool(tool_name, tool_args, mcp_name)
+                tool_results.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": tool_name,
+                    "content": json.dumps(result)
+                })
+            
+            # Make second LLM call with tool results
+            request_params["messages"].append(choice.message)
+            request_params["messages"].extend(tool_results)
+            
+            logger.info("Making second LLM call with tool results")
+            response = await get_client().chat.completions.create(**request_params)
+            choice = response.choices[0]
+        
+        if not choice.message or not choice.message.content:
             raise ValueError("Empty response content from LLM API")
         
         # Get the response content and scrub it for safety
-        full_response = response.choices[0].message.content.strip()
+        full_response = choice.message.content.strip()
         
     except Exception as e:
         error_msg = f"Failed to get LLM response: {str(e)}"
         logger.error(error_msg)
         await cl.Message(content=f"Sorry, I encountered an error while processing your request: {str(e)}").send()
         return
+    
     persona = cl.user_session.get("chat_profile")
     results = await process_message_for_tts(full_response, persona)
     # Run message through processing pipeline

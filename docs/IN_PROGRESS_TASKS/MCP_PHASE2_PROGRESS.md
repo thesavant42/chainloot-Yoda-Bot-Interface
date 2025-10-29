@@ -85,15 +85,110 @@
 
 ---
 
-## Phase 2 Status: COMPLETE (Pending UI Verification)
+## Phase 2 Status: COMPLETE
 
 Phase 2 implementation is complete. The application now has:
+
 - Required MCP handlers (@cl.on_mcp_connect, @cl.on_mcp_disconnect)
 - Tool execution handler (@cl.step with type="tool")
 - Proper config.toml MCP configuration
 - Understanding that MCP servers are user-configured via UI, not config files
 
-**Next: Test the Chainlit UI to verify MCP connection interface appears**
+---
+
+## Phase 3: LLM Integration (COMPLETE)
+
+### 3.1 Tool Discovery and Formatting
+
+#### Task: Retrieve MCP tools from session
+
+- **Status:** COMPLETED
+- **Implementation:** `mcp_tools = cl.user_session.get("mcp_tools", {})`
+
+#### Task: Format tools for OpenAI-compatible API
+
+- **Status:** COMPLETED
+- **Implementation:** Tools converted to OpenAI function calling format with type/function/parameters structure
+
+#### Task: Create tool-to-connection mapping
+
+- **Status:** COMPLETED
+- **Implementation:** `tool_to_connection` dict maps tool names to their MCP connection names
+
+---
+
+### 3.2 LLM Tool Calling Flow
+
+#### Task: Add tools parameter to LLM request
+
+- **Status:** COMPLETED
+- **Implementation:** `request_params["tools"]` populated when MCP tools available
+
+#### Task: Detect tool_calls in LLM response
+
+- **Status:** COMPLETED
+- **Implementation:** Check `choice.message.tool_calls` for tool requests
+
+#### Task: Execute tools via call_mcp_tool handler
+
+- **Status:** COMPLETED
+- **Implementation:** Loop through tool_calls, execute each via existing handler
+
+#### Task: Second LLM call with tool results
+
+- **Status:** COMPLETED
+- **Implementation:** Append tool results to messages, make second API call
+
+---
+
+## Testing Instructions
+
+### Phase 2 Testing (MCP Connection)
+
+**Check logs for:**
+```
+MCP connection established: time
+Retrieved 2 tools from time
+Tools from time: get_current_time, get_timezone_info
+```
+
+**How to verify:** Look in Docker logs after adding an MCP server via UI
+
+---
+
+### Phase 3 Testing (Full Flow)
+
+**Test 1: Simple tool use**
+- Ask: "What time is it?"
+- Expected: LLM calls time tool, responds with actual time
+
+**Test 2: Search tool**
+- Ask: "Search for Python tutorials"
+- Expected: LLM calls brave-search, responds with search results
+
+**Test 3: Multi-tool scenario**
+- Ask: "What time is it in London and search for weather there"
+- Expected: LLM calls time + brave-search, synthesizes answer
+
+**What to look for in logs:**
+```
+Found X MCP tools available for this request
+LLM requested Y tool calls
+Executing MCP tool: [tool-name] on [connection-name]
+Tool [tool-name] executed successfully
+Making second LLM call with tool results
+```
+
+---
+
+## Phase 3 Status: COMPLETE
+
+All MCP integration phases are now complete:
+- Phase 1: Cleanup (removed broken custom implementation)
+- Phase 2: MCP handlers (tool discovery and session management)  
+- Phase 3: LLM integration (tool calling flow)
+
+**Next: Restart services and test the full MCP + LLM flow**
 
 ---
 

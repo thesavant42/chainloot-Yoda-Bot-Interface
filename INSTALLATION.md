@@ -86,7 +86,6 @@ Create a `.env` file in the project root with any required API keys:
 
 ```env
 # Example environment variables (if needed)
-# OPENAI_API_KEY=your_key_here
 # BRAVE_API_KEY=your_key_here
 ```
 

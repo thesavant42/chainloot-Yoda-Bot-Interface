@@ -2,7 +2,7 @@
 requests            # HTTP library
 python-dateutil     #
 python-dotenv       # Environment variables
-openai              # OpenAI API client
+openai              # # Need AsyncOpenAI for Chat
 ## CUDA 12.8 Enabled Bins
 torch==2.7.0+cu128         # PyTorch with CUDA 12.8 support (from pip cache proxy)
 torchaudio==2.7.0+cu128    # Audio processing with CUDA support

@@ -33,7 +33,7 @@ This document supercedes all others that conflict. This is the source of truth f
 # Model servering
 ./ollama/
 
-# OpenAI-Compatible APIs for TTS, STT
+ # TTS, STT
 ./tts-webui/
 
 ### Files

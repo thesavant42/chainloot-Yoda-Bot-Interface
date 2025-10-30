@@ -2,7 +2,7 @@
 
 ## Problem Statement:
 
-This app should not be using openai-tool functions. But for some reason the programming agent will **not stop adding them back in.**
+LLM incorrectly conflates OpenAI chat API with OpenAI Tool Functions. we use their chat, not their tools.
 
 ## Task: Investigate why programming agent keeps using openai-specific tool calls.
 

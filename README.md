@@ -42,9 +42,6 @@ The goal is to unify and simplify the architecture required to run the robot. Th
   
 Service autostart for API has been sorted, no longer need to manually start the first time.  
   
-- ~~Still have to manually enable the openai api service in the gradio interfce on port 7770 the first time, which is why it will complain in the logs.~~
-     ~~**Check the box under "API" un the "Tools" menu of the Gradio UI.**~~
-
 
 - Firmware: [https://github.com/thesavant42/y0da](https://github.com/thesavant42/y0da)
 
@@ -53,21 +50,6 @@ Service autostart for API has been sorted, no longer need to manually start the 
 ### Homepage
 
 - [https://hackaday.io/project/195655-hacking-seasonal-yoda](https://hackaday.io/project/195655-hacking-seasonal-yoda)
-
-### Endpoints
-
-- **OpenAI-Compatible Text to Speech (TTS) API:**  
-  `http://192.168.1.98:7778/v1/audio/speech`
-- **OpenAI-Compatible Whisper (STT) API:**  
-  `http://192.168.1.98:7778/v1/audio/transcriptions`
-- **TTS-WebUI Audio Models List (chatterbox):**  
-  `http://192.168.1.98:7778/v1/audio/models`
-- **List Voices API (chatterbox-tts):**  
-  `http://192.168.1.98:7778/v1/audio/voices`
-- **LM Studio - List Models (LM Studio API):**  
-  `http://192.168.1.98:1234/api/v0/models`
-- **LM Studio - (OpenAPI) Chat Completion API:**  
-  `http://192.168.1.98:1234/v1`
 
 ### Docs
 

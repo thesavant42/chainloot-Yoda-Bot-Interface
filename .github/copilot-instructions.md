@@ -7,7 +7,7 @@
 
 ### Core Stack
 - **Frontend**: Chainlit (Python) - Chat UI with MCP tool integration
-- **LLM Backends**: Ollama (default) + LM Studio (OpenAI-compatible CHAT APIs)  
+- **LLM Backends**: Ollama (default) + LM Studio (OpenAI-compatible CHAT APIs but NOT OpenAI Tool Functions! Convert those to MCP and remove them from the code base.)  
 - **Voice Stack**: TTS-WebUI (voice synthesis) + Whisper (speech recognition)
 - **Message Bus**: Mosquitto MQTT broker with emotion telemetry
 - **Data Layer**: PostgreSQL + LocalStack S3 (file storage)
@@ -171,4 +171,4 @@ docker exec -it chainloot-ollama-1 ollama pull phi4-mini
 - **MCP Tools**: JSON-RPC via Chainlit (not OpenAI functions)
 - **MQTT Telemetry**: Pub/sub for emotions, system stats, presence
 - **Voice Synthesis**: REST API to TTS-WebUI (chatterbox model)
-- **LLM Providers**: OpenAI-compatible APIs (auto-detected model lists)
+- **LLM Providers**: OpenAI-compatible Chat APIs (auto-detected model lists)

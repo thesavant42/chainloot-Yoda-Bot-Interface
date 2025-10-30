@@ -117,8 +117,8 @@ async def on_mcp_disconnect(name: str, session: ClientSession):
 async def execute_tool(tool_name: str, tool_input: Dict[str, Any]):
     """Execute an MCP tool directly via MCP protocol.
     
-    This function is called by Chainlit when the LLM requests a tool call.
-    It finds the tool in the connected MCP servers and executes it.
+    Chainlit's @cl.step decorator automatically handles displaying this
+    as a collapsible tool step in the UI with proper formatting.
     """
     logger.info(f"Executing MCP tool: {tool_name} with input: {tool_input}")
     mcp_name = None
@@ -135,7 +135,7 @@ async def execute_tool(tool_name: str, tool_input: Dict[str, Any]):
         return {"error": f"Tool '{tool_name}' not found in any connected MCP server"}
 
     try:
-        # Get the MCP session for this connection - FIXED: proper None checking
+        # Get the MCP session for this connection
         mcp_session_result = cl.context.session.mcp_sessions.get(mcp_name)
         
         if mcp_session_result is None:

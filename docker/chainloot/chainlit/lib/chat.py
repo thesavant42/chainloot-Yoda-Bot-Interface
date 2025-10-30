@@ -170,18 +170,11 @@ class ChatProcessor:
                             
                             # Execute the tool via MCP
                             logger.info(f"[{tool_call_id}] Calling MCP tool: {tool_name}")
-                            with cl.Step(name=f"Executing tool: {tool_name}", type="tool"):
-                                tool_result = await execute_mcp_tool(tool_name, tool_args)
+                            tool_result = await execute_mcp_tool(tool_name, tool_args)
+                            logger.info(f"[{tool_call_id}] Tool execution complete")
                             
-                            # Format and display tool result
+                            # Format tool result for message history
                             tool_result_content = format_calltoolresult_content(tool_result)
-                            logger.info(f"[{tool_call_id}] Tool result: {tool_result_content[:200]}...")
-                            
-                            tool_msg = cl.Message(
-                                content=f"Tool Result from {tool_name}:\n{tool_result_content}",
-                                author="Tool",
-                            )
-                            await tool_msg.send()
                             
                             # Add tool result to message history - CRITICAL: match the tool_call_id
                             message_history.append({

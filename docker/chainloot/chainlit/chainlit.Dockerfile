@@ -35,7 +35,7 @@ RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
 RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
 RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
 ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
-RUN node --version && npm --version
+# RUN node --version && npm --version
 
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -44,7 +44,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Install MCP servers explicitly (Python via uv, npm via npm install -g)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv tool install mcp-server-time && \
-    uv tool install mcp-server-fetch && \
     uv tool install mcp-server-git && \
     uv tool install mqtt-mcp
 
@@ -55,7 +54,8 @@ RUN --mount=type=cache,target=/root/.npm \
     npm install -g @modelcontextprotocol/server-sequential-thinking && \
     npm install -g @kimtaeyoon83/mcp-server-youtube-transcript && \
     npm install -g mcp-proxy --force && \
-    npm install -g prisma
+    npm install -g prisma && \
+    npm install -g mcp-fetch-server
 
 # Pre-download the sentiment analysis model to avoid runtime downloads
 RUN --mount=type=cache,target=/root/.cache/huggingface \

@@ -7,7 +7,7 @@
 
 ### Core Stack
 - **Frontend**: Chainlit (Python) - Chat UI with MCP tool integration
-- **LLM Backends**: Ollama (default) + LM Studio (OpenAI-compatible APIs)  
+- **LLM Backends**: Ollama (default) + LM Studio (OpenAI-compatible CHAT APIs)  
 - **Voice Stack**: TTS-WebUI (voice synthesis) + Whisper (speech recognition)
 - **Message Bus**: Mosquitto MQTT broker with emotion telemetry
 - **Data Layer**: PostgreSQL + LocalStack S3 (file storage)
@@ -26,7 +26,7 @@ LocalStack:   localstack:4566
 ## Critical Development Patterns
 
 ### MCP Integration (Model Context Protocol)
-**🚨 CRITICAL: This project uses MCP (Model Context Protocol), NOT OpenAI tool functions!**
+** CRITICAL: This project uses MCP (Model Context Protocol), NOT OpenAI tool functions!**
 
 **Architecture Flow:**
 ```
@@ -34,30 +34,8 @@ LLM Response → Chainlit (detects tools) → MCP JSON-RPC → call_mcp_tool() �
 ```
 
 **Key Rules:**
-- ✅ Use `chat.completions.create()` for LLM calls (OpenAI-compatible client)
 - ✅ ALL tool handling goes through `lib/mcp_handler.py` 
-- ✅ Chainlit automatically converts LLM responses to MCP JSON-RPC
-- ❌ NEVER implement `tool_calls`, `tool_call_id`, or OpenAI tool functions
-- ❌ NEVER manually parse or handle tool calling responses
-
-```python
-# ✅ Correct: Chainlit MCP pattern
-@cl.on_mcp_connect
-async def on_mcp_connect(connection, session):
-    # Store tool metadata only - Chainlit handles execution
-    tools = [{"name": t.name, "description": t.description} for t in await session.list_tools()]
-    store_mcp_tools(connection.name, tools)
-
-# ✅ Correct: Simple LLM call - Chainlit handles MCP behind the scenes
-response = await get_client().chat.completions.create(
-    model=selected_model,
-    messages=[{"role": "user", "content": user_text}]
-)
-
-# ❌ Wrong: Don't implement OpenAI tool_calls manually
-# ❌ Wrong: Don't add "tools" parameter to LLM request
-# ❌ Wrong: Don't parse tool_calls from response
-```
+- ✅ Chainlit automatically converts MCP
 
 ### MQTT Telemetry System
 Real-time emotion and system monitoring via hierarchical MQTT topics:
@@ -124,9 +102,9 @@ docker/chainloot/chainlit/          # Main Chainlit application
 
 **CRITICAL DEVELOPER INSTRUCTION**
 
-This project uses an OpenAI-compatible client (chat.completions.create) to get LLM responses, but it uses a custom tool implementation called MCP (Model Context Protocol).
+This project uses an OpenAI-compatible chat client (chat.completions.create) to get LLM responses, but it uses a standard tool implementation called MCP (Model Context Protocol).
 
-**DO NOT implement or use OpenAI tool functions.**
+**DO NOT implement or use OpenAI Tool functions.**
 
 ALL tool handling logic is located in lib/mcp_handler.py.
 

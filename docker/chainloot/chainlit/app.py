@@ -93,7 +93,12 @@ async def on_mcp_connect(connection, session: ClientSession):
 
 @cl.on_mcp_disconnect
 async def on_mcp_disconnect(name: str, session: ClientSession):
-    """Handle MCP disconnection"""
+    """Handle MCP disconnection - clean up tools"""
+    # Remove tools for this connection from session
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    if name in mcp_tools:
+        del mcp_tools[name]
+        cl.user_session.set("mcp_tools", mcp_tools)
     print(f"MCP disconnected: {name}")
 
 async def cleanup_on_exit():

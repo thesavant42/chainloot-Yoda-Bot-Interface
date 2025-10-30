@@ -24,7 +24,8 @@ from lib.tts_response import generate_audio_response
 from lib.message_processor import process_message_for_tts
 from lib.mqtt_publisher import get_mqtt_publisher
 from lib.container_monitor import get_container_monitor
-from lib.mcp_handler import get_all_mcp_tools, call_mcp_tool
+from lib.mcp_handler import has_mcp_tools
+
 from chainlit.input_widget import Select, Slider, Switch
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class ChatProcessor:
     async def process_user_input_and_respond(user_text: str):
         """
         Handles the core logic: gets LLM response, sends text, and generates TTS audio.
+        Includes MCP tool calling support.
         """
         # 1. Get settings from the user session for LLM processing
         selected_model = cl.user_session.get("selected_model")
@@ -60,11 +62,6 @@ class ChatProcessor:
             "max_tokens": max_tokens,
         }
         
-        # Add MCP tools if available (Chainlit handles the protocol)
-        mcp_tools = get_all_mcp_tools()
-        if mcp_tools:
-            request_params["tools"] = mcp_tools
-        
         # Add context length for Ollama if configured
         provider = config.get("provider", "lm-studio")
         if provider == "ollama":
@@ -76,8 +73,10 @@ class ChatProcessor:
                     logger.info(f"Using Ollama context length: {context_length}")
                 except ValueError:
                     logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}, ignoring")
+
+        # 4. Call LLM - Chainlit will handle MCP tool integration automatically
         try:
-            # Call LLM with tools
+            # Simple LLM call - Chainlit handles MCP tools behind the scenes
             response = await get_client().chat.completions.create(**request_params)
             llm_end_time = time.time()
             logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
@@ -88,41 +87,10 @@ class ChatProcessor:
             
             choice = response.choices[0]
             
-            # Handle tool calls if present
-            if choice.message.tool_calls:
-                logger.info(f"LLM requested {len(choice.message.tool_calls)} tool calls")
-                
-                # Add the assistant message to conversation
-                request_params["messages"].append(choice.message)
-                
-                # Process each tool call
-                for tool_call in choice.message.tool_calls:
-                    async with cl.Step(type="tool", name=tool_call.function.name) as step:
-                        tool_name = tool_call.function.name
-                        tool_input = json.loads(tool_call.function.arguments)
-                        
-                        # Execute tool via MCP
-                        tool_result = await call_mcp_tool(tool_name, tool_input)
-                        step.output = tool_result
-                        
-                        # Add tool result to conversation
-                        request_params["messages"].append({
-                            "role": "tool", 
-                            "tool_call_id": tool_call.id,
-                            "content": tool_result
-                        })
-                
-                # Get final LLM response after tool calls
-                final_response = await get_client().chat.completions.create(**request_params)
-                if not final_response.choices[0].message.content:
-                    raise ValueError("Empty final response after tool execution")
-                full_response = final_response.choices[0].message.content.strip()
-                
-            else:
-                # No tool calls, use direct response
-                if not choice.message or not choice.message.content:
-                    raise ValueError("Empty response content from LLM API")
-                full_response = choice.message.content.strip()
+            if not choice.message or not choice.message.content:
+                raise ValueError("Empty response content from LLM API")
+            
+            full_response = choice.message.content.strip()
             
         except Exception as e:
             error_msg = f"Failed to get LLM response: {str(e)}"

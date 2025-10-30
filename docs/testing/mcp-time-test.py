@@ -10,23 +10,31 @@ async def test_time_tool():
                            stderr=subprocess.PIPE,
                            text=True)
     
-    # Initialize
+    # Initialize MCP connection
     init_req = {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {'protocolVersion': '2025-06-18', 'capabilities': {}, 'clientInfo': {'name': 'test-client', 'version': '1.0'}}}
     proc.stdin.write(json.dumps(init_req) + '\n')
     proc.stdin.flush()
     proc.stdout.readline()  # consume init response
     
-    # Call the tool for Los Angeles time
-    tool_call = {
+    # Discover available tools first (proper MCP discovery)
+    list_tools_req = {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list', 'params': {}}
+    proc.stdin.write(json.dumps(list_tools_req) + '\n')
+    proc.stdin.flush()
+    
+    tools_response = proc.stdout.readline()
+    print(f'Available tools: {tools_response.strip()}')
+    
+    # Now call the discovered tool
+    mcp_request = {
         'jsonrpc': '2.0', 
-        'id': 3, 
+        'id': 3,
         'method': 'tools/call',
         'params': {
             'name': 'get_current_time',
             'arguments': {'timezone': 'America/Los_Angeles'}
         }
     }
-    proc.stdin.write(json.dumps(tool_call) + '\n')
+    proc.stdin.write(json.dumps(mcp_request) + '\n')
     proc.stdin.flush()
     
     # Read response

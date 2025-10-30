@@ -24,7 +24,14 @@ from lib.tts_response import generate_audio_response
 from lib.message_processor import process_message_for_tts
 from lib.mqtt_publisher import get_mqtt_publisher
 from lib.container_monitor import get_container_monitor
-from lib.mcp_handler import has_mcp_tools, get_mcp_tools_for_llm, execute_mcp_tool
+from lib.mcp_handler import (
+    has_mcp_tools, 
+    get_mcp_tools_for_llm, 
+    execute_mcp_tool, 
+    format_tools_for_openai, 
+    format_calltoolresult_content,
+    stream_llm_response,
+)
 
 from chainlit.input_widget import Select, Slider, Switch
 
@@ -37,8 +44,9 @@ class ChatProcessor:
     @staticmethod
     async def process_user_input_and_respond(user_text: str):
         """
-        Handles the core logic: gets LLM response, sends text, and generates TTS audio.
-        Includes MCP tool calling support.
+        Handles the core logic with STREAMING: gets LLM response with token-by-token output,
+        handles tool calls, sends text, and generates TTS audio.
+        Implements the MCP streaming patterns from the walkthrough.
         """
         # 1. Get settings from the user session for LLM processing
         selected_model = cl.user_session.get("selected_model")
@@ -49,54 +57,57 @@ class ChatProcessor:
         if reasoning_enabled:
             system_prompt += " Think step by step before responding."
 
-        # 2. Prepare LLM request parameters
-        llm_start_time = time.time()
-        
-        # Build conversation history (starting fresh each time for now)
-        messages = [
+        # 2. Initialize message history (start fresh each conversation turn)
+        message_history = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_text}
         ]
         
-        request_params = {
-            "model": selected_model,
-            "messages": messages,
-            "temperature": llm_temp,
-            "max_tokens": max_tokens,
-        }
-        
-        # Add MCP tools if available
-        mcp_tools = get_mcp_tools_for_llm()
-        if mcp_tools:
-            request_params["tools"] = mcp_tools
-            request_params["tool_choice"] = "auto"
-            logger.info(f"Added {len(mcp_tools)} MCP tools to LLM request")
-        
-        # Add context length for Ollama if configured
-        provider = config.get("provider", "lm-studio")
-        if provider == "ollama":
-            ollama_context_length = os.getenv("OLLAMA_CONTEXT_LENGTH")
-            if ollama_context_length:
-                try:
-                    context_length = int(ollama_context_length)
-                    request_params["extra_body"] = {"num_ctx": context_length}
-                    logger.info(f"Using Ollama context length: {context_length}")
-                except ValueError:
-                    logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}, ignoring")
-
-        # 3. Call LLM with MCP tool support (may require multiple iterations for tool calls)
-        max_iterations = 5  # Prevent infinite loops
-        iteration = 0
-        full_response = ""
+        llm_start_time = time.time()
+        persona = cl.user_session.get("chat_profile")
         
         try:
+            # 3. Main agentic loop - continue until we get a text response with no tool calls
+            max_iterations = 5  # Prevent infinite loops
+            iteration = 0
+            full_response = ""
+            
             while iteration < max_iterations:
                 iteration += 1
                 logger.info(f"LLM call iteration {iteration}")
                 
+                # 4. Build request parameters
+                request_params = {
+                    "model": selected_model,
+                    "messages": message_history,
+                    "temperature": llm_temp,
+                    "max_tokens": max_tokens,
+                }
+                
+                # Add MCP tools if available
+                if has_mcp_tools():
+                    mcp_tools = get_mcp_tools_for_llm()
+                    openai_tools = await format_tools_for_openai(mcp_tools)
+                    request_params["tools"] = openai_tools
+                    request_params["tool_choice"] = "auto"
+                    logger.info(f"Added {len(openai_tools)} MCP tools to LLM request")
+                
+                # Add Ollama-specific settings if needed
+                provider = config.get("provider", "lm-studio")
+                if provider == "ollama":
+                    ollama_context_length = os.getenv("OLLAMA_CONTEXT_LENGTH")
+                    if ollama_context_length:
+                        try:
+                            context_length = int(ollama_context_length)
+                            request_params["extra_body"] = {"num_ctx": context_length}
+                            logger.info(f"Using Ollama context length: {context_length}")
+                        except ValueError:
+                            logger.warning(f"Invalid OLLAMA_CONTEXT_LENGTH value: {ollama_context_length}")
+                
+                # 5. Call LLM (non-streaming)
                 response = await get_client().chat.completions.create(**request_params)
                 llm_end_time = time.time()
-                logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds.")
+                logger.info(f"PERF: LLM call took {llm_end_time - llm_start_time:.2f} seconds")
                 
                 # Validate response structure
                 if not response or not hasattr(response, 'choices') or not response.choices:
@@ -104,82 +115,128 @@ class ChatProcessor:
                 
                 choice = response.choices[0]
                 
-                # Check if the model wants to call a tool
-                if hasattr(choice, 'finish_reason') and choice.finish_reason == 'tool_calls':
-                    # Model is requesting tool calls
-                    tool_calls = choice.message.tool_calls
-                    logger.info(f"Model requested {len(tool_calls)} tool calls")
-                    
-                    # Add assistant message with tool calls to history
-                    messages.append({
-                        "role": "assistant",
-                        "content": choice.message.content or "",
-                        "tool_calls": [
-                            {
-                                "id": tc.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tc.function.name,
-                                    "arguments": tc.function.arguments
-                                }
-                            } for tc in tool_calls
-                        ]
-                    })
-                    
-                    # Execute each tool call
-                    for tool_call in tool_calls:
-                        tool_name = tool_call.function.name
-                        tool_args = json.loads(tool_call.function.arguments)
-                        
-                        logger.info(f"Executing tool: {tool_name}")
-                        
-                        # Execute the MCP tool
-                        tool_result = await execute_mcp_tool(tool_name, tool_args)
-                        
-                        # Add tool result to conversation
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": tool_result
+                if not choice.message:
+                    raise ValueError("Empty response from LLM API")
+                
+                streamed_text = (choice.message.content or "").strip()
+                tool_calls = []
+                
+                # Check if LLM generated tool calls (only if tools were provided)
+                if has_mcp_tools() and hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+                    for tc in choice.message.tool_calls:
+                        tool_calls.append({
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                            "id": tc.id
                         })
-                        
-                        logger.info(f"Tool {tool_name} executed, result added to conversation")
+                
+                # 6. Add assistant's initial response to history
+                if streamed_text.strip():
+                    message_history.append({"role": "assistant", "content": streamed_text})
+                    full_response = streamed_text
+                
+                # 7. Process tool calls if any were generated
+                if tool_calls:
+                    logger.info(f"Processing {len(tool_calls)} tool calls")
                     
-                    # Update request params with new messages and continue loop
-                    request_params["messages"] = messages
-                    llm_start_time = time.time()
+                    for tool_call in tool_calls:
+                        tool_name = tool_call["name"]
+                        tool_call_id = tool_call.get("id", f"call_{len(tool_calls)}")  # Use actual ID from LLM
+                        try:
+                            # Parse tool arguments from JSON string
+                            if isinstance(tool_call["arguments"], str):
+                                tool_args = json.loads(tool_call["arguments"])
+                            else:
+                                tool_args = tool_call["arguments"]
+                            
+                            logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
+                            
+                            # Add tool call to message history (OpenAI format)
+                            # IMPORTANT: Use the actual tool_call_id from LLM response
+                            message_history.append({
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": tool_call_id,  # Use actual ID
+                                        "type": "function",
+                                        "function": {
+                                            "name": tool_name,
+                                            "arguments": tool_call["arguments"],
+                                        },
+                                    }
+                                ],
+                            })
+                            
+                            # Execute the tool via MCP
+                            logger.info(f"[{tool_call_id}] Calling MCP tool: {tool_name}")
+                            with cl.Step(name=f"Executing tool: {tool_name}", type="tool"):
+                                tool_result = await execute_mcp_tool(tool_name, tool_args)
+                            
+                            # Format and display tool result
+                            tool_result_content = format_calltoolresult_content(tool_result)
+                            logger.info(f"[{tool_call_id}] Tool result: {tool_result_content[:200]}...")
+                            
+                            tool_msg = cl.Message(
+                                content=f"Tool Result from {tool_name}:\n{tool_result_content}",
+                                author="Tool",
+                            )
+                            await tool_msg.send()
+                            
+                            # Add tool result to message history - CRITICAL: match the tool_call_id
+                            message_history.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,  # Match the actual ID
+                                "content": tool_result_content,
+                            })
+                            
+                            logger.info(f"[{tool_call_id}] Tool execution complete, continuing for follow-up response")
+                        
+                        except json.JSONDecodeError as e:
+                            logger.error(f"[{tool_call_id}] JSON parse error for tool args: {str(e)}")
+                            error_content = f"Error parsing tool arguments for '{tool_name}': {str(e)}"
+                            message_history.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "content": error_content,
+                            })
+                        except Exception as e:
+                            logger.error(f"[{tool_call_id}] Error executing tool {tool_name}: {str(e)}", exc_info=True)
+                            error_content = f"Error calling tool '{tool_name}': {str(e)}"
+                            message_history.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "content": error_content,
+                            })
+                    
+                    # Loop back to get next response with tool results context
+                    logger.info("Tool calls processed, getting follow-up response from LLM")
                     continue
                 
-                # Normal response (not a tool call)
-                if not choice.message or not choice.message.content:
-                    raise ValueError("Empty response content from LLM API")
-                
-                full_response = choice.message.content.strip()
-                logger.info(f"Received final response after {iteration} iterations")
+                # No tool calls, we have the final response - exit loop
+                logger.info(f"Final response received after {iteration} iterations")
                 break
-                
+            
         except Exception as e:
             error_msg = f"Failed to get LLM response: {str(e)}"
             logger.error(error_msg)
-            await cl.Message(content=f"Sorry, I encountered an error while processing your request: {str(e)}").send()
+            await cl.Message(content=f"Sorry, I encountered an error: {str(e)}").send()
             return
         
-        persona = cl.user_session.get("chat_profile")
+        # 8. Process response for TTS (emotion analysis, etc.)
         results = await process_message_for_tts(full_response, persona)
-        # Run message through processing pipeline
-        
         for r in results:
             logger.info(f"Sentiment: {r['sentiment']} | Text: {r['processed_chunk']}")
         scrubbed_response = " ".join([r["processed_chunk"] for r in results])
 
-        # 4. Send text response to the UI
+        # 9. Send text response to the UI
         character = cl.user_session.get("character")
         text_msg = await cl.Message(
             content=scrubbed_response,
             author=character
         ).send()
            
-        # 5. Generate and send audio response
+        # 10. Generate and send audio response
         await generate_audio_response(scrubbed_response, text_msg.id)
 
     @staticmethod

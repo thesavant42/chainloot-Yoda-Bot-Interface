@@ -25,11 +25,11 @@ chainlit            # Core Requirement
 
 ## MCP Core and Servers
 mcp                 # MCP core for handlers
-#mcp-proxy           # Proxy for HTTP/SSE transport
-#mcp-server-time     # Time utilities server
-#mcp-server-fetch    # HTTP fetch server
-#mcp-server-git      # Git operations server
-#wikipedia-mcp       # Wikipedia server
+mcp-proxy           # Proxy for HTTP/SSE transport
+mcp-server-time     # Time utilities server
+mcp-server-fetch    # HTTP fetch server
+mcp-server-git      # Git operations server
+wikipedia-mcp       # Wikipedia server
 
 ## Datalayer 
 prisma              # Database ORM for datalayer

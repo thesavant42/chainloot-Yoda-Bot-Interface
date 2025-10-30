@@ -62,6 +62,19 @@ def get_client():
     
     return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
+
+def get_chat_settings():
+    """Get chat completion settings based on current provider and config"""
+    model = config.get("last_used_model", "")
+    temperature = config.get("temperature", 0.7)
+    max_tokens = config.get("max_tokens", 2048)
+    
+    return {
+        "model": model,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+
 # --- Dynamic Asset Fetching (Functions) ---
 def fetch_available_models(provider=None):
     """Fetches available LLM models from the specified provider."""

@@ -11,7 +11,7 @@
   "gradio_interface_options": {
     "inline": false,
     "inbrowser": true,
-    "share": true,
+    "share": false,
     "debug": true,
     "max_threads": 40,
     "auth": null,

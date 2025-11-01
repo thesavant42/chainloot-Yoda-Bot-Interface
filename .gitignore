@@ -21,6 +21,7 @@ wheels/
 *.svg
 MANIFEST
 *.env
+*.wav
 # PyInstaller
 *.manifest
 *.spec

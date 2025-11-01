@@ -60,5 +60,7 @@ RUN jq '.extension_openai_tts_api = (.extension_openai_tts_api // {}) | .extensi
 # Build the React UI
 RUN cd react-ui && npm install && npm run build
 
-# Run the server
-CMD python3 server.py --docker
+# Copy and run the startup script
+COPY tts-webui/start-tts-webui.sh /app/tts-webui/start-tts-webui.sh
+RUN chmod +x /app/tts-webui/start-tts-webui.sh
+CMD ["/app/tts-webui/start-tts-webui.sh"]

@@ -43,6 +43,7 @@ services:
     volumes:
       - ./tts-webui/tts_models:/root/.cache/huggingface
       - ./tts-webui/tts_voices:/app/tts-webui/voices
+      - ./tts-webui:/app/host-scripts
     env_file:
       - ./tts-webui/tts-webui.env
     deploy:

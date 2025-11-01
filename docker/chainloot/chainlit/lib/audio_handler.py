@@ -26,7 +26,7 @@ async def on_audio_start():
 async def on_audio_end():
     """Transcribes audio, then calls the core logic function."""
     # Import here to avoid circular imports
-    from app import process_user_input_and_respond
+    from lib.chat import process_user_input_and_respond
     
     audio_buffer = cl.user_session.get("audio_buffer")
     try:

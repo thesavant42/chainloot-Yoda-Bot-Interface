@@ -15,7 +15,8 @@ boto3               # AWS SDK, Data layer attachment storage
 pyjson              # JSON utilities
 beautifulsoup4      # HTML parsing
 Cython              # C extensions
-spacy==3.6.1        # NLP library
+numpy>=1.21.0,<2.0.0
+spacy>=3.0.6,<4.0.0        # NLP library
 
 ## Emotions & Observation
 paho-mqtt>=1.6.0    # MQTT client for emotion publishing (MQTT 5.0 support)

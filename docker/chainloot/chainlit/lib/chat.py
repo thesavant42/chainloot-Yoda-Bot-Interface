@@ -9,6 +9,7 @@ import logging
 import time
 import json
 import os
+import sys
 from typing import Dict, Any, List
 
 
@@ -215,6 +216,17 @@ class ChatProcessor:
             logger.error(error_msg)
             await cl.Message(content=f"Sorry, I encountered an error: {str(e)}").send()
             return
+        
+        # Apply Yoda translation if using Yoda persona
+        if persona == "Yoda" and full_response.strip():
+            print(f"YODA DEBUG - Original response: {full_response}")
+            lib_path = os.path.dirname(__file__)
+            if lib_path not in sys.path:
+                sys.path.append(lib_path)
+            from yoda import translate
+            yoda_response = translate(full_response)
+            print(f"YODA DEBUG - Translated response: {yoda_response}")
+            full_response = yoda_response
         
         # 8. Process response for TTS (emotion analysis, etc.)
         results = await process_message_for_tts(full_response, persona)

@@ -1,0 +1,25 @@
+models:
+  SmolLM3-savant:
+    # Use the specific GGUF model from HuggingFace
+    model: hf.co/unsloth/SmolLM3-3B-128K-GGUF:Q4_K_M
+    # Large context size for the 128K variant
+    context_size: 131072
+    # Runtime flags based on your markdown configuration
+    runtime_flags:
+      - "--jinja"                         # enable builtin template for /think mode
+      - "--temp"
+      - "0.8"
+      - "--top-p" 
+      - "0.9"
+      - "--verbose"                       # Set verbosity level to infinity
+      - "--verbose-prompt"                # Print a verbose prompt before generation
+      - "--log-prefix"                    # Enable prefix in log messages
+      - "--log-timestamps"                # Enable timestamps in log messages
+      - "--log-colors"                    # Enable colored logging
+      - "--metrics"                       # Enable metrics
+      - "--reasoning-format"              # Enable reasoning format for thinking mode
+      - "none"
+      - "--host"
+      - "0.0.0.0"                        # Bind to all interfaces
+      - "--port"
+      - "8242"

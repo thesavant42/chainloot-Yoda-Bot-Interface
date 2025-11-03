@@ -65,11 +65,6 @@ RUN --mount=type=cache,target=/root/.cache/huggingface \
 RUN --mount=type=cache,target=/root/.cache/huggingface \
     python -m spacy download en_core_web_sm
 
-# Test the installation
-RUN python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('SpaCy model loaded successfully')"
-# Test yoda translator from the lib directory where it will be copied
-RUN cd /app && python -c "import sys; sys.path.append('lib'); from yoda import translate; print('Yoda test:', translate('You are conflicted.'))"
-
 # Set work directory
 WORKDIR /app
 
@@ -79,6 +74,11 @@ COPY . .
 # Copy and make executable the startup script
 COPY start.sh .
 RUN chmod +x start.sh
+
+# Test the installation
+RUN python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('SpaCy model loaded successfully')"
+# Test yoda translator from the lib directory where it will be copied
+RUN cd /app && python -c "import sys; sys.path.append('lib'); from yoda import translate; print('Yoda test:', translate('You are conflicted.'))"
 
 # Set PATH to include MCP tool locations
 ENV PATH="/root/.local/bin:/usr/local/bin:$PATH"

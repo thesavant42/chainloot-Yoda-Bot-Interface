@@ -3,6 +3,7 @@
     "prisma": "^5.17.0"
   },
   "dependencies": {
+    "@huggingface/ollama-utils": "^0.0.15",
     "@prisma/client": "^5.17.0"
   }
 }

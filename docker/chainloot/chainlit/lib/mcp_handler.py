@@ -222,9 +222,13 @@ async def stream_llm_response(client, request_params: Dict[str, Any]):
             delta = chunk.choices[0].delta
             
             # Process text content - yield immediately for UI streaming
+            # Handle both content and reasoning_content for SmolLM3 thinking mode
             if delta.content:
                 text_buffer += delta.content
                 yield ("text", delta.content)  # Yield as text token
+            elif hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                text_buffer += delta.reasoning_content
+                yield ("text", delta.reasoning_content)  # Yield reasoning content as text
             
             # Accumulate tool calls across all chunks - don't yield yet
             if delta.tool_calls:

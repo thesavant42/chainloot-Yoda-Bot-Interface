@@ -19,7 +19,7 @@ This directory contains all user-editable configuration files for the Chainloot 
 **Example**:
 ```json
 {
-  "lm_studio_base_url": "http://192.168.1.98:1234/v1",
+  "lm_studio_base_url": "http://model-runner.docker.internal/v1",
   "api_key": "lm-studio",
   "last_used_model": "phi-4-mini-instruct",
   "tts_base_url": "http://tts-webui:7778",

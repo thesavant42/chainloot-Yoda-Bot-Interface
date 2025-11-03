@@ -74,14 +74,14 @@ audio::-webkit-media-controls-overflow-button svg {
    the light‑dark colour you defined for the rest of the UI.
    ---------------------------------------------------------------- */
 
-/* 1️⃣  Timeline (the bar that you drag) */
+/* 1️  Timeline (the bar that you drag) */
 audio::-webkit-media-controls-timeline,
 audio::-internal-media-controls-timeline {
     /* make the *track* itself use the light‑dark colour */
     background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
 }
 
-/* 2️⃣  Segmented track (the “filled‑in” portion of the timeline) */
+/* 2️  Segmented track (the “filled‑in” portion of the timeline) */
 audio::-internal-media-controls-segmented-track,
 audio::-internal-track-segment-background,
 audio::-internal-track-segment-highlight-before,
@@ -89,7 +89,7 @@ audio::-internal-track-segment-highlight-after {
     background: light-dark(rgb(255,255,255), rgb(59,59,59)) !important;
 }
 
-/* 3️⃣  Overflow (⋮) button */
+/* 3️  Overflow (⋮) button */
 audio::-internal-media-controls-overflow-button,
 audio::-webkit-media-controls-overflow-button {
     /* colour of the icon */
@@ -135,4 +135,39 @@ audio::-webkit-media-controls-overflow-button {
 audio::-internal-media-controls-overflow-button svg,
 audio::-webkit-media-controls-overflow-button svg {
     filter: invert(1) !important;
+}
+
+/* Settings Panel Styling - Improved Layout */
+/* Override Chainlit's narrow settings dialog */
+#chat-settings {
+    min-width: 60vw !important;  /* 3x wider than their 20vw */
+    max-width: 90vw !important;
+    max-height: 90vh !important; /* Prevent excessive height */
+}
+
+/* Remove scroll bar by making content fit properly */
+#chat-settings .flex.flex-col.flex-grow.overflow-y-auto {
+    overflow-y: visible !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+    align-items: start !important;
+}
+
+/* Make form controls use full width within their columns */
+#chat-settings select,
+#chat-settings input[type="range"] {
+    width: 100% !important;
+}
+
+/* Improved spacing for switches and smaller controls */
+#chat-settings > div {
+    margin-bottom: 1rem !important;
+}
+
+/* Stack switches more compactly */
+#chat-settings [data-testid*="switch"],
+#chat-settings [role="switch"] {
+    margin-bottom: 0.75rem !important;
 }

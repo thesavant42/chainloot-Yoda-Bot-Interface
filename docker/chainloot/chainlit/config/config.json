@@ -1,7 +1,7 @@
 {
-    "lm_studio_base_url": "http://192.168.1.98:1234/v1",
-    "api_key": "lm-studio",
-    "last_used_model": "gpt-oss:120b-cloud",
+    "chat_backend_base_url": "http://model-runner.docker.internal/engines",
+    "api_key": "docker-model-runner",
+    "last_used_model": "hf.co/unsloth/smollm3-3b-128k-gguf:q4_k_m",
     "logging_enabled": false,
     "tts_base_url": "http://tts-webui:7778",
     "tts_model_name": "chatterbox",
@@ -14,7 +14,7 @@
     "tts_seed": -1,
     "tts_chunked": true,
     "tts_response_format": "wav",
-    "tts_speed": 0.85,
+    "tts_speed": 0.8,
     "tts_stream": true,
     "tts_use_compilation": true,
     "tts_max_new_tokens": 1000,
@@ -34,11 +34,12 @@
     "max_tokens": 1000,
     "system_prompt_key": "Stark",
     "character": null,
-    "reasoning_enabled": false,
+    "reasoning_enabled": true,
     "profile_voices": {
         "Yoda": "voices/chatterbox/11.wav",
-        "AI": "voices/chatterbox/3po.wav",
+        "3PO": "voices/chatterbox/3po.wav",
         "Stark": "voices/chatterbox/stark.wav"
     },
-    "provider": "ollama"
+    "provider": "docker-model-runner",
+    "temperature": 0.8
 }

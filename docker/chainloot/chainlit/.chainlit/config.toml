@@ -60,13 +60,13 @@ allow_thread_sharing = false
 allowed_executables = [ "npx", "uvx", "mcp-proxy", "python" ]
 
 [UI]
-name = "Assistant"
+name = "YodaBot"
 default_theme = "dark"
 #layout = "wide"
 layout = "default"
 description = "Yoda Robot"
 default_sidebar_state = "closed"
-cot = "full" # Can be "hidden", "tool_call" or "full".
+cot = "hidden" # Can be "hidden", "tool_call" or "full".
 custom_css = '/public/globals.css'
 # Specify additional attributes for a custom CSS file
 # custom_css_attributes = "media=\"print\""

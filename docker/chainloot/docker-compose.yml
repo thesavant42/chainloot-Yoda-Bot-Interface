@@ -64,6 +64,10 @@ services:
     ports:
       - "8100:8100"
       - "8443:8443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    models:
+    - SmolLM3  
     volumes:
       - ./chainlit/:/app
       - ./chainlit/ssl:/app/ssl
@@ -146,3 +150,24 @@ networks:
 
 volumes:
   tts_models:
+
+models:
+  SmolLM3:
+    # Use the specific GGUF model from HuggingFace
+    model: hf.co/unsloth/smollm3-3b-128k-gguf:q4_k_m
+    # Large context size for the 128K variant
+    context_size: 131072 # 8192
+    # Runtime flags based on your markdown configuration
+    runtime_flags:
+      - "--jinja"                         # enable builtin template for /think mode
+      - "--temp"
+      - "0.8"
+      - "--top-p" 
+      - "0.9"
+      - "--verbose"                       # Set verbosity level to infinity
+      - "--verbose-prompt"                # Print a verbose prompt before generation
+      - "--log-prefix"                    # Enable prefix in log messages
+      - "--log-timestamps"                # Enable timestamps in log messages
+      - "--log-colors"                    # Enable colored logging
+      - "auto"
+      - "--metrics"                       # Enable metrics

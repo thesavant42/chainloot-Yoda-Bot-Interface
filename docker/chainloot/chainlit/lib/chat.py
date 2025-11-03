@@ -34,7 +34,7 @@ from lib.mcp_handler import (
     stream_llm_response,
 )
 
-from chainlit.input_widget import Select, Slider, Switch
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class ChatProcessor:
                     logger.info(f"Added {len(openai_tools)} MCP tools to LLM request")
                 
                 # Add Ollama-specific settings if needed
-                provider = config.get("provider", "lm-studio")
+                provider = config.get("provider", "docker-model-runner")
                 if provider == "ollama":
                     ollama_context_length = os.getenv("OLLAMA_CONTEXT_LENGTH")
                     if ollama_context_length:
@@ -119,7 +119,10 @@ class ChatProcessor:
                 if not choice.message:
                     raise ValueError("Empty response from LLM API")
                 
-                streamed_text = (choice.message.content or "").strip()
+                # Handle both content and reasoning_content for SmolLM3 thinking mode
+                content = choice.message.content or ""
+                reasoning_content = getattr(choice.message, 'reasoning_content', '') or ""
+                streamed_text = (content or reasoning_content).strip()
                 tool_calls = []
                 
                 # Check if LLM generated tool calls (only if tools were provided)
@@ -349,17 +352,12 @@ class ChatProcessor:
         cl.user_session.set("available_models", available_models)
         cl.user_session.set("ollama_context_length", int(os.getenv("OLLAMA_CONTEXT_LENGTH", "4096")))
 
-        # Remaining settings pulled from config (these keys must exist)
-        required_scalar_keys = ["lm_studio_temperature", "max_tokens", "tts_speed", "tts_exaggeration", "tts_temperature", "reasoning_enabled"]
-        for k in required_scalar_keys:
-            if k not in config:
-                raise KeyError(f"Missing required config key: '{k}'")
-        
-        cl.user_session.set("llm_temp", config["lm_studio_temperature"])
-        cl.user_session.set("max_tokens", config["max_tokens"])
-        cl.user_session.set("tts_speed", config["tts_speed"])
-        cl.user_session.set("tts_exaggeration", config["tts_exaggeration"])
-        cl.user_session.set("reasoning_enabled", config["reasoning_enabled"])
+        # Set remaining settings from config with fallback defaults
+        cl.user_session.set("llm_temp", config.get("temperature", config.get("lm_studio_temperature", 0.7)))
+        cl.user_session.set("max_tokens", config.get("max_tokens", 8192))
+        cl.user_session.set("tts_speed", config.get("tts_speed", 1.0))
+        cl.user_session.set("tts_exaggeration", config.get("tts_exaggeration", 0.0))
+        cl.user_session.set("reasoning_enabled", config.get("reasoning_enabled", False))
 
         # Log audio diagnostic info
         from lib.config_handler import stt_client
@@ -367,42 +365,10 @@ class ChatProcessor:
 
     @staticmethod
     async def _render_settings_ui(tts_available):
-        """Render the settings UI widgets."""
-        provider = config.get("provider", "lm-studio")
-        selected_model = cl.user_session.get("selected_model")
-        selected_voice = cl.user_session.get("selected_voice")
-        
-        model_values = available_models if available_models else ["No models available"]
-        model_index = 0  # Default to first item
-        if available_models and selected_model in available_models:
-            model_index = available_models.index(selected_model)
-        
-        voice_index = available_voices.index(selected_voice) if tts_available and selected_voice in available_voices else 0
-
-        settings_widgets = [
-            Select(id="provider", label="LLM Provider", values=["lm-studio", "ollama"], initial_index=0 if provider == "lm-studio" else 1),
-            Select(id="model", label="LLM Model", values=model_values, initial_index=model_index),
-            Select(id="model_refresh", label="Model Refresh", values=["No Action", "Refresh Now"], initial_index=0),
-            Slider(id="llm_temp", label="LLM Temperature", initial=cl.user_session.get("llm_temp"), min=0.0, max=2.0, step=0.1),
-            Slider(id="max_tokens", label="Max Tokens", initial=cl.user_session.get("max_tokens"), min=100, max=2000, step=50),
-            Switch(id="reasoning_enabled", label="Enable Reasoning", initial=cl.user_session.get("reasoning_enabled")),
-        ]
-        
-        # Add Ollama-specific settings
-        if provider == "ollama":
-            ollama_context = cl.user_session.get("ollama_context_length", 4096)
-            settings_widgets.insert(3, Slider(id="ollama_context_length", label="Context Length", initial=ollama_context, min=1024, max=131072, step=1024))
-        
-        # Only add voice-related settings if TTS is available
-        if tts_available:
-            settings_widgets.insert(1, Select(id="voice", label="TTS Voice", values=available_voices, initial_index=voice_index))
-            settings_widgets.extend([
-                Slider(id="tts_speed", label="TTS Speed", initial=cl.user_session.get("tts_speed"), min=0.25, max=4.0, step=0.05),
-                Slider(id="tts_exaggeration", label="TTS Exaggeration", initial=cl.user_session.get("tts_exaggeration"), min=0.0, max=1.0, step=0.1),
-                Slider(id="tts_temperature", label="TTS Temperature", initial=config.get("tts_temperature", 0.7), min=0.0, max=2.0, step=0.1),
-            ])
-        
-        await cl.ChatSettings(settings_widgets).send()
+        """Render the settings UI widgets using the centralized settings module."""
+        from lib.settings import send_updated_settings_ui
+        from lib.config_handler import available_models
+        await send_updated_settings_ui(available_models)
 
     @staticmethod
     async def handle_chat_end():

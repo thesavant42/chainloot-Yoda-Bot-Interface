@@ -67,6 +67,7 @@ The goal is to unify and simplify the architecture required to run the robot. Th
 - **New hotness**: Yoda-Translator - Use SpaCy to parse the messages before sending and then reshuffle them into "Object-Subject-Verb syntax.
   - Used https://github.com/thesavant42/yoda-translator
     - Which is based off of **https://github.com/haohangxu/yoda-translator**
+- https://spacy.io/models/en#en_core_web_sm     
 - This approach will work with any model or any text input for that matter. 
 - An added bonus is that it only applies to Master Yoda, and his Chain of Thought no longer has to be Yodish. 
   - It was causing issues with reasoning and MCP.
